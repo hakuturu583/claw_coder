@@ -4,6 +4,8 @@
 
 The important security property is that setup and runtime commands enter the container with `env -i`. Host environment variables are not forwarded by default. If a Hugging Face token is needed, pass it explicitly with `--pass-hf-token`; only `HF_TOKEN`/`HUGGING_FACE_HUB_TOKEN` is copied into a root-only file inside the container.
 
+If a local `.env` file exists next to the command you run, it is sourced before option parsing. Set `NEMOLXD_ENV_FILE` to point at another dotenv file, or set it to `none` to disable the auto-load.
+
 The same explicit-forwarding rule applies to optional OpenClaw integrations. Use `--pass-brave-search` and `--pass-slack` to copy only the supported Brave Search and Slack variables into a root-only file inside the container.
 
 ## What It Creates
@@ -55,15 +57,21 @@ export HF_TOKEN=...
 bin/nemolxd --pass-hf-token up
 ```
 
+You can keep credentials outside git in a local `.env` file:
+
+```bash
+cat > .env <<'EOF'
+HF_TOKEN=...
+BRAVE_SEARCH_API_KEY=...
+SLACK_BOT_TOKEN=...
+SLACK_APP_TOKEN=...
+SLACK_SIGNING_SECRET=...
+EOF
+```
+
 To enable Brave Search for web search and Slack for user communication:
 
 ```bash
-export BRAVE_SEARCH_API_KEY=...
-export SLACK_BOT_TOKEN=xoxb-...
-export SLACK_APP_TOKEN=xapp-...          # required for Socket Mode clients
-export SLACK_SIGNING_SECRET=...          # required for HTTP event clients
-export SLACK_CHANNEL_ID=...              # optional default channel
-
 bin/nemolxd --pass-brave-search --pass-slack configure-integrations
 ```
 

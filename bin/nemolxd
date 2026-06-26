@@ -2,6 +2,19 @@
 set -euo pipefail
 
 PROGRAM="${0##*/}"
+load_env_file() {
+  local file="${1:-}"
+  [[ -n "$file" && "$file" != "none" && -f "$file" ]] || return 0
+  set -a
+  . "$file"
+  set +a
+}
+
+ENV_FILE="${NEMOLXD_ENV_FILE:-.env}"
+if [[ -n "$ENV_FILE" && "$ENV_FILE" != "none" ]]; then
+  load_env_file "$ENV_FILE"
+fi
+
 INSTANCE="${NEMOLXD_INSTANCE:-nemoclaw-vllm}"
 SERVICE="nemolxd-llama.service"
 IMAGE="${NEMOLXD_IMAGE:-ubuntu:24.04}"
