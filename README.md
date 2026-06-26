@@ -4,6 +4,8 @@
 
 The important security property is that setup and runtime commands enter the container with `env -i`. Host environment variables are not forwarded by default. If a Hugging Face token is needed, pass it explicitly with `--pass-hf-token`; only `HF_TOKEN`/`HUGGING_FACE_HUB_TOKEN` is copied into a root-only file inside the container.
 
+The same explicit-forwarding rule applies to optional OpenClaw integrations. Use `--pass-brave-search` and `--pass-slack` to copy only the supported Brave Search and Slack variables into a root-only file inside the container.
+
 ## What It Creates
 
 - LXD container: `nemoclaw-vllm`
@@ -14,6 +16,7 @@ The important security property is that setup and runtime commands enter the con
 - Local agent endpoint config inside the container:
   - `/opt/nemoclaw/openai.env`
   - `/opt/nemoclaw/agent.json`
+  - `/opt/nemoclaw/integrations.env`
 
 Default model settings:
 
@@ -52,6 +55,18 @@ export HF_TOKEN=...
 bin/nemolxd --pass-hf-token up
 ```
 
+To enable Brave Search for web search and Slack for user communication:
+
+```bash
+export BRAVE_SEARCH_API_KEY=...
+export SLACK_BOT_TOKEN=xoxb-...
+export SLACK_APP_TOKEN=xapp-...          # required for Socket Mode clients
+export SLACK_SIGNING_SECRET=...          # required for HTTP event clients
+export SLACK_CHANNEL_ID=...              # optional default channel
+
+bin/nemolxd --pass-brave-search --pass-slack configure-integrations
+```
+
 By default the endpoint is available only inside the LXD container. This avoids IDE or remote-port-forwarding features opening browser authentication pages.
 
 NemoClaw or another coding agent should use:
@@ -76,6 +91,25 @@ bin/nemolxd destroy
 No browser login or external setup flow is required by this tool. It only creates a local OpenAI-compatible llama.cpp endpoint in LXD.
 
 `shell` also uses a scrubbed environment, so it is suitable for checking what the container can see without leaking the host session.
+
+## OpenClaw Integrations
+
+`configure-integrations` writes `/opt/nemoclaw/integrations.env` with:
+
+```text
+OPENCLAW_SEARCH_PROVIDER=brave
+OPENCLAW_COMMUNICATION_PROVIDER=slack
+BRAVE_SEARCH_API_KEY=...
+SLACK_BOT_TOKEN=...
+SLACK_APP_TOKEN=...
+SLACK_SIGNING_SECRET=...
+SLACK_CLIENT_ID=...
+SLACK_CLIENT_SECRET=...
+SLACK_CHANNEL_ID=...
+SLACK_TEAM_ID=...
+```
+
+Only variables present in the host environment and enabled by the matching pass-through flag are copied. The file is mode `0600` and is also symlinked at `/opt/nemolxd/integrations.env` for runtime helpers. `agent.json` records Brave Search and Slack as the configured OpenClaw integrations and points clients at this env file.
 
 ## Tuning
 

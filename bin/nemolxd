@@ -20,6 +20,8 @@ CUDA_VARIANT="${NEMOLXD_CUDA_VARIANT:-cu130}"
 LLAMA_CPP_TAG="${NEMOLXD_LLAMA_CPP_TAG:-b9803}"
 LLAMA_N_GPU_LAYERS="${NEMOLXD_LLAMA_N_GPU_LAYERS:-999}"
 PASS_HF_TOKEN=0
+PASS_BRAVE_SEARCH=0
+PASS_SLACK=0
 
 usage() {
   cat <<EOF
@@ -44,6 +46,8 @@ Global options:
   --llama-cpp-tag TAG    llama.cpp release tag or git ref (default: $LLAMA_CPP_TAG)
   --n-gpu-layers N       llama.cpp GPU offload layers (default: $LLAMA_N_GPU_LAYERS)
   --pass-hf-token        Pass only HF_TOKEN/HUGGING_FACE_HUB_TOKEN into setup
+  --pass-brave-search    Pass Brave Search credentials into LXD setup
+  --pass-slack           Pass Slack credentials into LXD setup
   -h, --help             Show help
 
 Commands:
@@ -51,6 +55,7 @@ Commands:
   doctor                 Check host-side requirements
   create                 Create the LXD container and attach GPU/proxy devices
   install                Install/build llama.cpp and local agent endpoint config
+  configure-integrations Write Brave Search and Slack config/credentials
   up                     create + install + start
   start                  Start the llama.cpp systemd service inside LXD
   stop                   Stop the llama.cpp service
@@ -75,6 +80,39 @@ have() {
 
 lxc_exists() {
   lxc info "$INSTANCE" >/dev/null 2>&1
+}
+
+append_host_env_if_set() {
+  local -n target="$1"
+  local name value
+  shift
+  for name in "$@"; do
+    value="${!name:-}"
+    if [[ -n "$value" ]]; then
+      target+=("${name}=${value}")
+    fi
+  done
+}
+
+host_env_any_set() {
+  local name
+  for name in "$@"; do
+    if [[ -n "${!name:-}" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+validate_requested_integration_credentials() {
+  if [[ "$PASS_BRAVE_SEARCH" == 1 ]] &&
+    ! host_env_any_set BRAVE_SEARCH_API_KEY BRAVE_API_KEY; then
+    die "--pass-brave-search requires BRAVE_SEARCH_API_KEY or BRAVE_API_KEY in the host environment"
+  fi
+  if [[ "$PASS_SLACK" == 1 ]] &&
+    ! host_env_any_set SLACK_BOT_TOKEN SLACK_APP_TOKEN SLACK_SIGNING_SECRET SLACK_CLIENT_SECRET; then
+    die "--pass-slack requires SLACK_BOT_TOKEN, SLACK_APP_TOKEN, SLACK_SIGNING_SECRET, or SLACK_CLIENT_SECRET in the host environment"
+  fi
 }
 
 remote_env() {
@@ -106,6 +144,21 @@ remote_env() {
   )
   if [[ "$PASS_HF_TOKEN" == 1 && -n "$token" ]]; then
     env_args+=(HF_TOKEN="$token" HUGGING_FACE_HUB_TOKEN="$token")
+  fi
+  if [[ "$PASS_BRAVE_SEARCH" == 1 ]]; then
+    append_host_env_if_set env_args \
+      BRAVE_SEARCH_API_KEY \
+      BRAVE_API_KEY
+  fi
+  if [[ "$PASS_SLACK" == 1 ]]; then
+    append_host_env_if_set env_args \
+      SLACK_BOT_TOKEN \
+      SLACK_APP_TOKEN \
+      SLACK_SIGNING_SECRET \
+      SLACK_CLIENT_ID \
+      SLACK_CLIENT_SECRET \
+      SLACK_CHANNEL_ID \
+      SLACK_TEAM_ID
   fi
   lxc exec "$INSTANCE" -- "${env_args[@]}" "$@"
 }
@@ -259,6 +312,7 @@ cmd_create() {
 cmd_install() {
   require_lxc
   lxc_exists || die "instance does not exist: $INSTANCE"
+  validate_requested_integration_credentials
 
   remote_bash <<'REMOTE'
 set -euo pipefail
@@ -378,6 +432,33 @@ else
   chmod 0600 /opt/nemolxd/huggingface.env
 fi
 
+write_optional_env() {
+  local name="$1"
+  local value="${!name:-}"
+  if [ -n "$value" ]; then
+    printf '%s=%q\n' "$name" "$value"
+  fi
+}
+
+{
+  printf 'OPENCLAW_SEARCH_PROVIDER=brave\n'
+  printf 'OPENCLAW_COMMUNICATION_PROVIDER=slack\n'
+  if [ -z "${BRAVE_SEARCH_API_KEY:-}" ] && [ -n "${BRAVE_API_KEY:-}" ]; then
+    printf 'BRAVE_SEARCH_API_KEY=%q\n' "$BRAVE_API_KEY"
+  fi
+  write_optional_env BRAVE_SEARCH_API_KEY
+  write_optional_env BRAVE_API_KEY
+  write_optional_env SLACK_BOT_TOKEN
+  write_optional_env SLACK_APP_TOKEN
+  write_optional_env SLACK_SIGNING_SECRET
+  write_optional_env SLACK_CLIENT_ID
+  write_optional_env SLACK_CLIENT_SECRET
+  write_optional_env SLACK_CHANNEL_ID
+  write_optional_env SLACK_TEAM_ID
+} >/opt/nemoclaw/integrations.env
+chmod 0600 /opt/nemoclaw/integrations.env
+ln -sf /opt/nemoclaw/integrations.env /opt/nemolxd/integrations.env
+
 cat >/opt/nemolxd/start-llama.sh <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -437,6 +518,20 @@ cat >/opt/nemoclaw/agent.json <<EOF
   "base_url": "http://127.0.0.1:${NEMOLXD_API_PORT}/v1",
   "api_key": "nemolxd-local",
   "model": "${NEMOLXD_MODEL}",
+  "integrations": {
+    "search": {
+      "provider": "brave",
+      "env_file": "/opt/nemoclaw/integrations.env",
+      "api_key_env": "BRAVE_SEARCH_API_KEY"
+    },
+    "communication": {
+      "provider": "slack",
+      "env_file": "/opt/nemoclaw/integrations.env",
+      "bot_token_env": "SLACK_BOT_TOKEN",
+      "app_token_env": "SLACK_APP_TOKEN",
+      "signing_secret_env": "SLACK_SIGNING_SECRET"
+    }
+  },
   "isolation": {
     "runtime": "lxd",
     "host_environment_forwarding": "disabled-by-default"
@@ -450,6 +545,82 @@ systemctl enable nemolxd-llama.service
 REMOTE
 
   printf 'installed isolated llama.cpp runtime in %s\n' "$INSTANCE"
+}
+
+cmd_configure_integrations() {
+  require_lxc
+  lxc_exists || die "instance does not exist: $INSTANCE"
+  if [[ "$PASS_BRAVE_SEARCH" == 0 && "$PASS_SLACK" == 0 ]]; then
+    die "configure-integrations requires --pass-brave-search and/or --pass-slack"
+  fi
+  validate_requested_integration_credentials
+
+  remote_bash <<'REMOTE'
+set -euo pipefail
+
+install -d -m 0755 /opt/nemoclaw /opt/nemolxd
+
+write_optional_env() {
+  local name="$1"
+  local value="${!name:-}"
+  if [ -n "$value" ]; then
+    printf '%s=%q\n' "$name" "$value"
+  fi
+}
+
+{
+  printf 'OPENCLAW_SEARCH_PROVIDER=brave\n'
+  printf 'OPENCLAW_COMMUNICATION_PROVIDER=slack\n'
+  if [ -z "${BRAVE_SEARCH_API_KEY:-}" ] && [ -n "${BRAVE_API_KEY:-}" ]; then
+    printf 'BRAVE_SEARCH_API_KEY=%q\n' "$BRAVE_API_KEY"
+  fi
+  write_optional_env BRAVE_SEARCH_API_KEY
+  write_optional_env BRAVE_API_KEY
+  write_optional_env SLACK_BOT_TOKEN
+  write_optional_env SLACK_APP_TOKEN
+  write_optional_env SLACK_SIGNING_SECRET
+  write_optional_env SLACK_CLIENT_ID
+  write_optional_env SLACK_CLIENT_SECRET
+  write_optional_env SLACK_CHANNEL_ID
+  write_optional_env SLACK_TEAM_ID
+} >/opt/nemoclaw/integrations.env
+chmod 0600 /opt/nemoclaw/integrations.env
+ln -sf /opt/nemoclaw/integrations.env /opt/nemolxd/integrations.env
+
+if [ -r /opt/nemolxd/env ]; then
+  . /opt/nemolxd/env
+fi
+
+cat >/opt/nemoclaw/agent.json <<EOF
+{
+  "provider": "openai-compatible",
+  "base_url": "http://127.0.0.1:${NEMOLXD_API_PORT:-8000}/v1",
+  "api_key": "nemolxd-local",
+  "model": "${NEMOLXD_MODEL:-unsloth/Qwen3.6-35B-A3B-GGUF:UD-Q4_K_M}",
+  "integrations": {
+    "search": {
+      "provider": "brave",
+      "env_file": "/opt/nemoclaw/integrations.env",
+      "api_key_env": "BRAVE_SEARCH_API_KEY"
+    },
+    "communication": {
+      "provider": "slack",
+      "env_file": "/opt/nemoclaw/integrations.env",
+      "bot_token_env": "SLACK_BOT_TOKEN",
+      "app_token_env": "SLACK_APP_TOKEN",
+      "signing_secret_env": "SLACK_SIGNING_SECRET"
+    }
+  },
+  "isolation": {
+    "runtime": "lxd",
+    "host_environment_forwarding": "disabled-by-default"
+  }
+}
+EOF
+chmod 0644 /opt/nemoclaw/agent.json
+REMOTE
+
+  printf 'configured Brave Search and Slack integration metadata in %s\n' "$INSTANCE"
 }
 
 cmd_start() {
@@ -547,6 +718,8 @@ while [[ $# -gt 0 ]]; do
     --llama-cpp-tag) LLAMA_CPP_TAG="${2:?missing value}"; shift 2 ;;
     --n-gpu-layers) LLAMA_N_GPU_LAYERS="${2:?missing value}"; shift 2 ;;
     --pass-hf-token) PASS_HF_TOKEN=1; shift ;;
+    --pass-brave-search) PASS_BRAVE_SEARCH=1; shift ;;
+    --pass-slack) PASS_SLACK=1; shift ;;
     -h|--help) usage; exit 0 ;;
     --) shift; break ;;
     -*) die "unknown option: $1" ;;
@@ -570,6 +743,7 @@ case "$COMMAND" in
   doctor) cmd_doctor "$@" ;;
   create) cmd_create "$@" ;;
   install) cmd_install "$@" ;;
+  configure-integrations) cmd_configure_integrations "$@" ;;
   up) cmd_up "$@" ;;
   start) cmd_start "$@" ;;
   stop) cmd_stop "$@" ;;
