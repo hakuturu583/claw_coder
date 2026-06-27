@@ -98,6 +98,7 @@ install -m 0755 /opt/nemoclaw/llama-build/bin/llama-server /opt/nemoclaw/llama-s
 {
   printf 'NEMOCLAW_MODEL=%q\n' "$NEMOCLAW_MODEL"
   printf 'NEMOCLAW_LLAMA_MODEL_PATH=%q\n' "$llama_model_path"
+  printf 'NEMOCLAW_CHARACTER_NAME=%q\n' "$NEMOCLAW_CHARACTER_NAME"
   printf 'NEMOCLAW_API_HOST=%q\n' "$NEMOCLAW_API_HOST"
   printf 'NEMOCLAW_API_PORT=%q\n' "$NEMOCLAW_API_PORT"
   printf 'NEMOCLAW_MAX_MODEL_LEN=%q\n' "$NEMOCLAW_MAX_MODEL_LEN"

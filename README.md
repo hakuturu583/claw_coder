@@ -1,6 +1,6 @@
 # nemoclaw
 
-`nemoclaw` builds a Docker Compose based local inference runtime for NemoClaw/OpenClaw-style coding agents. It splits the control plane and the model server into separate containers: `nemoclaw` keeps the persistent OpenClaw state, and `inference` runs `deepreinforce-ai/Ornith-1.0-35B-GGUF` through llama.cpp as a local OpenAI-compatible endpoint.
+`nemoclaw` builds a Docker Compose based local inference runtime for NemoClaw/OpenClaw-style coding agents. It splits the control plane and the model server into separate containers: `nemoclaw` keeps the persistent OpenClaw state, and `inference` runs `deepreinforce-ai/Ornith-1.0-35B-GGUF` through llama.cpp as a local OpenAI-compatible endpoint. The default character name is `Clawくん`.
 
 The runtime keeps container state in named volumes:
 
@@ -66,7 +66,7 @@ bin/setup_nemoclaw.bash up
 bin/setup_nemoclaw.bash test
 ```
 
-You can also run `docker compose up` directly. On the first start, the inference container will build `llama-server` automatically before serving requests.
+You can also run `docker compose up` directly. On the first start, the inference container will build `llama-server` automatically before serving requests, and the control container will send a Slack startup message once inference is Ready if `SLACK_BOT_TOKEN` and `SLACK_CHANNEL_ID` are set.
 
 For a gated/private download:
 
@@ -81,7 +81,7 @@ You can keep credentials outside git in a local `.env` file:
 cp .env.example .env
 ```
 
-Put `GH_TOKEN` or `GITHUB_TOKEN` in that `.env` file if you want `gh` to work inside the `nemoclaw` container without an interactive login.
+Put `GH_TOKEN` or `GITHUB_TOKEN` in that `.env` file if you want `gh` to work inside the `nemoclaw` container without an interactive login. Set `NEMOCLAW_CHARACTER_NAME=Clawくん` there if you want to override the default character name used in startup notifications.
 
 To enable Brave Search for web search and Slack for user communication:
 
@@ -91,7 +91,7 @@ bin/setup_nemoclaw.bash --pass-brave-search --pass-slack configure-integrations
 
 By default the endpoint is only available inside the inference container. Add `--host-port` only when you want a host-local proxy published on `127.0.0.1`.
 
-NemoClaw or another coding agent should use:
+Clawくん or another coding agent should use:
 
 ```text
 OPENAI_BASE_URL=http://127.0.0.1:8000/v1
@@ -134,7 +134,7 @@ SLACK_CHANNEL_ID=...
 SLACK_TEAM_ID=...
 ```
 
-Only variables present in the host environment and enabled by the matching pass-through flag are copied. The file is mode `0600` and is also symlinked at `/opt/nemoclaw/integrations.env` for runtime helpers. `agent.json` records Brave Search and Slack as the configured OpenClaw integrations and points clients at this env file.
+Only variables present in the host environment and enabled by the matching pass-through flag are copied. The file is mode `0600` and is also symlinked at `/opt/nemoclaw/integrations.env` for runtime helpers. `agent.json` records Brave Search and Slack as the configured OpenClaw integrations and points clients at this env file. Startup Slack notifications use the same Slack bot token and channel id, and the message names the character `Clawくん` by default after inference reaches Ready.
 
 ## Tuning
 

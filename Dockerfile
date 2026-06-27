@@ -26,7 +26,8 @@ RUN useradd --create-home --home-dir /home/nemoclaw --shell /bin/bash nemoclaw \
 COPY docker/inference-entrypoint.sh /usr/local/bin/inference-entrypoint.sh
 COPY docker/install-nemoclaw-inference.sh /usr/local/bin/install-nemoclaw-inference.sh
 COPY docker/nemoclaw-entrypoint.sh /usr/local/bin/nemoclaw-entrypoint.sh
-RUN chmod 0755 /usr/local/bin/inference-entrypoint.sh /usr/local/bin/install-nemoclaw-inference.sh /usr/local/bin/nemoclaw-entrypoint.sh \
+COPY docker/send-startup-notification.sh /usr/local/bin/send-startup-notification.sh
+RUN chmod 0755 /usr/local/bin/inference-entrypoint.sh /usr/local/bin/install-nemoclaw-inference.sh /usr/local/bin/nemoclaw-entrypoint.sh /usr/local/bin/send-startup-notification.sh \
   && chown -R nemoclaw:nemoclaw /home/nemoclaw
 
 WORKDIR /opt/nemoclaw
