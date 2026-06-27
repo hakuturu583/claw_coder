@@ -20,6 +20,7 @@ install -d -o nemoclaw -g nemoclaw -m 0700 /home/nemoclaw/.openclaw
 cat >/home/nemoclaw/.openclaw/openclaw.json <<EOF
 {
   gateway: {
+    mode: "local",
     bind: "loopback",
   },
   tools: {
