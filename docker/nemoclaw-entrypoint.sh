@@ -4,10 +4,10 @@ set -euo pipefail
 if [ -r /opt/nemoclaw/env ]; then
   . /opt/nemoclaw/env
 fi
-if [ -r /opt/nemoclaw/integrations.env ]; then
-  set -a
-  . /opt/nemoclaw/integrations.env
-  set +a
+
+if [ -z "${SLACK_BOT_TOKEN:-}" ] || [ -z "${SLACK_APP_TOKEN:-}" ] || [ -z "${SLACK_CHANNEL_ID:-}" ]; then
+  echo "error: SLACK_BOT_TOKEN, SLACK_APP_TOKEN, and SLACK_CHANNEL_ID are required for the OpenClaw Slack Channel" >&2
+  exit 1
 fi
 
 if [ -d /home/nemoclaw ]; then
@@ -15,8 +15,23 @@ if [ -d /home/nemoclaw ]; then
 fi
 install -d -o nemoclaw -g nemoclaw -m 0755 /home/nemoclaw/.openclaw /home/nemoclaw/.openclaw/skills || true
 
-if [ -n "${SLACK_BOT_TOKEN:-}" ] && [ -n "${SLACK_CHANNEL_ID:-}" ]; then
-  /usr/local/bin/send-startup-notification.sh >/tmp/nemoclaw-startup-notification.log 2>&1 &
+if [ ! -x /opt/openclaw/bin/openclaw ]; then
+  echo "error: openclaw CLI is missing from /opt/openclaw/bin/openclaw" >&2
+  exit 1
 fi
 
-exec gosu nemoclaw:nemoclaw sleep infinity
+/usr/local/bin/install-openclaw-config.sh
+
+for _ in $(seq 1 900); do
+  if curl -fsS "http://inference:${NEMOCLAW_API_PORT:-8000}/v1/models" >/dev/null 2>&1; then
+    break
+  fi
+  sleep 2
+done
+
+if ! curl -fsS "http://inference:${NEMOCLAW_API_PORT:-8000}/v1/models" >/dev/null 2>&1; then
+  echo "error: inference did not become ready at http://inference:${NEMOCLAW_API_PORT:-8000}/v1/models" >&2
+  exit 1
+fi
+
+exec gosu nemoclaw:nemoclaw openclaw gateway

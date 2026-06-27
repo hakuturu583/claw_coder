@@ -115,64 +115,9 @@ else
   chmod 0600 /opt/nemoclaw/huggingface.env
 fi
 
-write_optional_env() {
-  local name="$1"
-  local value="${!name:-}"
-  if [ -n "$value" ]; then
-    printf '%s=%q\n' "$name" "$value"
-  fi
-}
-
-{
-  printf 'OPENCLAW_SEARCH_PROVIDER=brave\n'
-  printf 'OPENCLAW_COMMUNICATION_PROVIDER=slack\n'
-  if [ -z "${BRAVE_SEARCH_API_KEY:-}" ] && [ -n "${BRAVE_API_KEY:-}" ]; then
-    printf 'BRAVE_SEARCH_API_KEY=%q\n' "$BRAVE_API_KEY"
-  fi
-  write_optional_env BRAVE_SEARCH_API_KEY
-  write_optional_env BRAVE_API_KEY
-  write_optional_env SLACK_BOT_TOKEN
-  write_optional_env SLACK_APP_TOKEN
-  write_optional_env SLACK_SIGNING_SECRET
-  write_optional_env SLACK_CLIENT_ID
-  write_optional_env SLACK_CLIENT_SECRET
-  write_optional_env SLACK_CHANNEL_ID
-  write_optional_env SLACK_TEAM_ID
-} >/opt/nemoclaw/integrations.env
-chmod 0600 /opt/nemoclaw/integrations.env
-ln -sf /opt/nemoclaw/integrations.env /opt/nemoclaw/integrations.env
-
 cat >/opt/nemoclaw/openai.env <<EOF
 OPENAI_BASE_URL=http://127.0.0.1:${NEMOCLAW_API_PORT}/v1
 OPENAI_API_KEY=nemoclaw-local
 OPENAI_MODEL=${NEMOCLAW_MODEL}
 EOF
 chmod 0600 /opt/nemoclaw/openai.env
-
-cat >/opt/nemoclaw/agent.json <<EOF
-{
-  "provider": "openai-compatible",
-  "base_url": "http://127.0.0.1:${NEMOCLAW_API_PORT}/v1",
-  "api_key": "nemoclaw-local",
-  "model": "${NEMOCLAW_MODEL}",
-  "integrations": {
-    "search": {
-      "provider": "brave",
-      "env_file": "/opt/nemoclaw/integrations.env",
-      "api_key_env": "BRAVE_SEARCH_API_KEY"
-    },
-    "communication": {
-      "provider": "slack",
-      "env_file": "/opt/nemoclaw/integrations.env",
-      "bot_token_env": "SLACK_BOT_TOKEN",
-      "app_token_env": "SLACK_APP_TOKEN",
-      "signing_secret_env": "SLACK_SIGNING_SECRET"
-    }
-  },
-  "isolation": {
-    "runtime": "docker-compose",
-    "host_environment_forwarding": "disabled-by-default"
-  }
-}
-EOF
-chmod 0644 /opt/nemoclaw/agent.json

@@ -38,8 +38,6 @@ CUDA_VARIANT="${NEMOCLAW_CUDA_VARIANT:-cu130}"
 LLAMA_CPP_TAG="${NEMOCLAW_LLAMA_CPP_TAG:-b9803}"
 LLAMA_N_GPU_LAYERS="${NEMOCLAW_LLAMA_N_GPU_LAYERS:-999}"
 PASS_HF_TOKEN=0
-PASS_BRAVE_SEARCH=0
-PASS_SLACK=0
 
 export INSTANCE IMAGE MODEL TOKENIZER HF_CONFIG_PATH HF_OVERRIDES GGUF_FILE
 export API_HOST API_PORT HOST_PORT GPU_ID TP_SIZE MAX_MODEL_LEN CUDA_VARIANT
@@ -69,8 +67,6 @@ Global options:
   --llama-cpp-tag TAG    llama.cpp release tag or git ref (default: $LLAMA_CPP_TAG)
   --n-gpu-layers N       llama.cpp GPU offload layers (default: $LLAMA_N_GPU_LAYERS)
   --pass-hf-token        Pass only HF_TOKEN/HUGGING_FACE_HUB_TOKEN into setup
-  --pass-brave-search    Pass Brave Search credentials into setup
-  --pass-slack           Pass Slack credentials into setup
   -h, --help             Show help
 
 Commands:
@@ -78,7 +74,7 @@ Commands:
   doctor                 Check host-side requirements
   create                 Create the Compose project and both service containers
   install                Install/build llama.cpp and inference config
-  configure-integrations Write Brave Search and Slack config/credentials for the control container
+  configure-openclaw     Write the OpenClaw gateway config for the control container
   up                     create + install + start
   start                  Start the Compose service
   stop                   Stop the Compose service
@@ -120,27 +116,6 @@ append_compose_env_if_set() {
       target+=(-e "${name}=${value}")
     fi
   done
-}
-
-host_env_any_set() {
-  local name
-  for name in "$@"; do
-    if [[ -n "${!name:-}" ]]; then
-      return 0
-    fi
-  done
-  return 1
-}
-
-validate_requested_integration_credentials() {
-  if [[ "$PASS_BRAVE_SEARCH" == 1 ]] &&
-    ! host_env_any_set BRAVE_SEARCH_API_KEY BRAVE_API_KEY; then
-    die "--pass-brave-search requires BRAVE_SEARCH_API_KEY or BRAVE_API_KEY in the host environment"
-  fi
-  if [[ "$PASS_SLACK" == 1 ]] &&
-    ! host_env_any_set SLACK_BOT_TOKEN SLACK_APP_TOKEN SLACK_SIGNING_SECRET SLACK_CLIENT_SECRET; then
-    die "--pass-slack requires SLACK_BOT_TOKEN, SLACK_APP_TOKEN, SLACK_SIGNING_SECRET, or SLACK_CLIENT_SECRET in the host environment"
-  fi
 }
 
 compose_base_args() {
@@ -275,26 +250,12 @@ cmd_create() {
 cmd_install() {
   require_docker
   require_compose
-  validate_requested_integration_credentials
 
   local -a env_args=()
   if [[ "$PASS_HF_TOKEN" == 1 ]]; then
     local token="${HF_TOKEN:-${HUGGING_FACE_HUB_TOKEN:-}}"
     [[ -n "$token" ]] || die "--pass-hf-token requires HF_TOKEN or HUGGING_FACE_HUB_TOKEN in the host environment"
     env_args+=(-e "HF_TOKEN=${token}" -e "HUGGING_FACE_HUB_TOKEN=${token}")
-  fi
-  if [[ "$PASS_BRAVE_SEARCH" == 1 ]]; then
-    append_compose_env_if_set env_args BRAVE_SEARCH_API_KEY BRAVE_API_KEY
-  fi
-  if [[ "$PASS_SLACK" == 1 ]]; then
-    append_compose_env_if_set env_args \
-      SLACK_BOT_TOKEN \
-      SLACK_APP_TOKEN \
-      SLACK_SIGNING_SECRET \
-      SLACK_CLIENT_ID \
-      SLACK_CLIENT_SECRET \
-      SLACK_CHANNEL_ID \
-      SLACK_TEAM_ID
   fi
 
   compose run --rm --no-deps --build "${env_args[@]}" \
@@ -304,95 +265,12 @@ cmd_install() {
   printf 'installed isolated llama.cpp runtime in %s\n' "$INSTANCE"
 }
 
-cmd_configure_integrations() {
+cmd_configure_openclaw() {
   require_docker
   require_compose
-  if [[ "$PASS_BRAVE_SEARCH" == 0 && "$PASS_SLACK" == 0 ]]; then
-    die "configure-integrations requires --pass-brave-search and/or --pass-slack"
-  fi
-  validate_requested_integration_credentials
+  compose run --rm --no-deps --build --entrypoint /usr/local/bin/install-openclaw-config.sh "$CONTROL_SERVICE"
 
-  local -a env_args=()
-  if [[ "$PASS_BRAVE_SEARCH" == 1 ]]; then
-    append_compose_env_if_set env_args BRAVE_SEARCH_API_KEY BRAVE_API_KEY
-  fi
-  if [[ "$PASS_SLACK" == 1 ]]; then
-    append_compose_env_if_set env_args \
-      SLACK_BOT_TOKEN \
-      SLACK_APP_TOKEN \
-      SLACK_SIGNING_SECRET \
-      SLACK_CLIENT_ID \
-      SLACK_CLIENT_SECRET \
-      SLACK_CHANNEL_ID \
-      SLACK_TEAM_ID
-  fi
-
-  compose run --rm --no-deps --build "${env_args[@]}" --entrypoint bash "$CONTROL_SERVICE" -s <<'REMOTE'
-set -euo pipefail
-
-install -d -m 0755 /opt/nemoclaw /opt/nemoclaw
-
-write_optional_env() {
-  local name="$1"
-  local value="${!name:-}"
-  if [ -n "$value" ]; then
-    printf '%s=%q\n' "$name" "$value"
-  fi
-}
-
-{
-  printf 'OPENCLAW_SEARCH_PROVIDER=brave\n'
-  printf 'OPENCLAW_COMMUNICATION_PROVIDER=slack\n'
-  if [ -z "${BRAVE_SEARCH_API_KEY:-}" ] && [ -n "${BRAVE_API_KEY:-}" ]; then
-    printf 'BRAVE_SEARCH_API_KEY=%q\n' "$BRAVE_API_KEY"
-  fi
-  write_optional_env BRAVE_SEARCH_API_KEY
-  write_optional_env BRAVE_API_KEY
-  write_optional_env SLACK_BOT_TOKEN
-  write_optional_env SLACK_APP_TOKEN
-  write_optional_env SLACK_SIGNING_SECRET
-  write_optional_env SLACK_CLIENT_ID
-  write_optional_env SLACK_CLIENT_SECRET
-  write_optional_env SLACK_CHANNEL_ID
-  write_optional_env SLACK_TEAM_ID
-} >/opt/nemoclaw/integrations.env
-chmod 0600 /opt/nemoclaw/integrations.env
-ln -sf /opt/nemoclaw/integrations.env /opt/nemoclaw/integrations.env
-
-if [ -r /opt/nemoclaw/env ]; then
-  . /opt/nemoclaw/env
-fi
-
-cat >/opt/nemoclaw/agent.json <<EOF
-{
-  "provider": "openai-compatible",
-  "base_url": "http://127.0.0.1:${NEMOCLAW_API_PORT:-8000}/v1",
-  "api_key": "nemoclaw-local",
-  "model": "${NEMOCLAW_MODEL:-deepreinforce-ai/Ornith-1.0-35B-GGUF:Q4_K_M}",
-  "integrations": {
-    "search": {
-      "provider": "brave",
-      "env_file": "/opt/nemoclaw/integrations.env",
-      "api_key_env": "BRAVE_SEARCH_API_KEY"
-    },
-    "communication": {
-      "provider": "slack",
-      "env_file": "/opt/nemoclaw/integrations.env",
-      "bot_token_env": "SLACK_BOT_TOKEN",
-      "app_token_env": "SLACK_APP_TOKEN",
-      "signing_secret_env": "SLACK_SIGNING_SECRET"
-    }
-  },
-  "isolation": {
-    "runtime": "docker-compose",
-    "host_environment_forwarding": "disabled-by-default"
-  }
-}
-EOF
-chmod 0644 /opt/nemoclaw/agent.json
-REMOTE
-
-  printf 'configured Brave Search and Slack integration metadata in %s\n' "$INSTANCE"
+  printf 'configured OpenClaw gateway metadata in %s\n' "$INSTANCE"
 }
 
 cmd_start() {
@@ -410,20 +288,49 @@ wait_for_runtime() {
   if [[ "$HOST_PORT" == "none" || -z "$HOST_PORT" ]]; then
     for _ in $(seq 1 120); do
       if compose exec -T "$INFERENCE_SERVICE" bash -lc 'curl -fsS "http://127.0.0.1:${NEMOCLAW_API_PORT}/v1/models" >/dev/null 2>&1'; then
-        return 0
+        break
       fi
       sleep 5
     done
-    echo "llama.cpp did not become ready at http://127.0.0.1:${API_PORT}/v1/models" >&2
+    if ! compose exec -T "$INFERENCE_SERVICE" bash -lc 'curl -fsS "http://127.0.0.1:${NEMOCLAW_API_PORT}/v1/models" >/dev/null 2>&1'; then
+      echo "llama.cpp did not become ready at http://127.0.0.1:${API_PORT}/v1/models" >&2
+      return 1
+    fi
+    for _ in $(seq 1 60); do
+      local control_id control_status
+      control_id="$(compose ps -q "$CONTROL_SERVICE" 2>/dev/null || true)"
+      if [[ -n "$control_id" ]]; then
+        control_status="$(docker inspect -f '{{.State.Status}}' "$control_id" 2>/dev/null || true)"
+        if [[ "$control_status" == "running" ]]; then
+          return 0
+        fi
+      fi
+      sleep 2
+    done
+    echo "OpenClaw gateway did not reach running state" >&2
     return 1
   else
     for _ in $(seq 1 120); do
       if curl -fsS "http://127.0.0.1:${HOST_PORT}/v1/models" >/dev/null 2>&1; then
-        return 0
+        break
       fi
       sleep 5
     done
-    die "llama.cpp did not become ready at http://127.0.0.1:${HOST_PORT}/v1/models"
+    if ! curl -fsS "http://127.0.0.1:${HOST_PORT}/v1/models" >/dev/null 2>&1; then
+      die "llama.cpp did not become ready at http://127.0.0.1:${HOST_PORT}/v1/models"
+    fi
+    for _ in $(seq 1 60); do
+      local control_id control_status
+      control_id="$(compose ps -q "$CONTROL_SERVICE" 2>/dev/null || true)"
+      if [[ -n "$control_id" ]]; then
+        control_status="$(docker inspect -f '{{.State.Status}}' "$control_id" 2>/dev/null || true)"
+        if [[ "$control_status" == "running" ]]; then
+          return 0
+        fi
+      fi
+      sleep 2
+    done
+    die "OpenClaw gateway did not reach running state"
   fi
 }
 
@@ -442,7 +349,7 @@ cmd_status() {
 cmd_logs() {
   require_docker
   require_compose
-  compose logs -f "$INFERENCE_SERVICE"
+  compose logs -f "$CONTROL_SERVICE" "$INFERENCE_SERVICE"
 }
 
 cmd_test() {
@@ -500,8 +407,6 @@ while [[ $# -gt 0 ]]; do
     --llama-cpp-tag) LLAMA_CPP_TAG="${2:?missing value}"; shift 2 ;;
     --n-gpu-layers) LLAMA_N_GPU_LAYERS="${2:?missing value}"; shift 2 ;;
     --pass-hf-token) PASS_HF_TOKEN=1; shift ;;
-    --pass-brave-search) PASS_BRAVE_SEARCH=1; shift ;;
-    --pass-slack) PASS_SLACK=1; shift ;;
     -h|--help) usage; exit 0 ;;
     --) shift; break ;;
     -*) die "unknown option: $1" ;;
@@ -542,7 +447,7 @@ case "$COMMAND" in
   doctor) cmd_doctor "$@" ;;
   create) cmd_create "$@" ;;
   install) cmd_install "$@" ;;
-  configure-integrations) cmd_configure_integrations "$@" ;;
+  configure-openclaw) cmd_configure_openclaw "$@" ;;
   up) cmd_up "$@" ;;
   start) cmd_start "$@" ;;
   stop) cmd_stop "$@" ;;
