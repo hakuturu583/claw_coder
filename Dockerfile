@@ -10,6 +10,7 @@ RUN apt-get update \
     ca-certificates \
     cmake \
     curl \
+    gh \
     git \
     gosu \
     jq \

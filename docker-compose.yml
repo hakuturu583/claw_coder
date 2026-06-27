@@ -8,14 +8,18 @@ services:
     image: nemoclaw:local
     restart: unless-stopped
     entrypoint: ["/usr/bin/tini", "-s", "--", "/opt/nemoclaw/nemoclaw-entrypoint.sh"]
+    working_dir: /workspace/claw_coder
     environment:
       HOME: /home/nemoclaw
       USER: nemoclaw
       LOGNAME: nemoclaw
+      GH_TOKEN: ${GH_TOKEN:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
     volumes:
       - nemoclaw-home:/home/nemoclaw
       - nemoclaw-skills:/home/nemoclaw/.openclaw/skills
       - nemoclaw-data:/opt/nemoclaw
+      - .:/workspace/claw_coder
 
   inference:
     build:

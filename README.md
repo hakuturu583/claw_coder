@@ -11,6 +11,12 @@ The runtime keeps container state in named volumes:
 
 The `nemoclaw` control container runs as the `nemoclaw` user at runtime. That keeps shell state and skill data separate from root while still letting the bootstrap/install steps run as root.
 
+The repository is bind-mounted into the `nemoclaw` control container at `/workspace/claw_coder`, and the image includes `gh` so you can run GitHub CLI commands from inside that container against the mounted checkout.
+
+If you want `gh` to work without running `gh auth login` inside the container, set `GH_TOKEN` or `GITHUB_TOKEN` in `.env` or the host environment. The control container forwards those variables and stores `gh` state under `/home/nemoclaw`.
+
+If you need extra local git checkouts, keep them under `repositories/` in this repo root. That path is ignored by git, so it is safe for throwaway or mirrored clones used by the control container.
+
 If a local `.env` file exists next to the command you run, it is sourced before option parsing. Set `NEMOCLAW_ENV_FILE` to point at another dotenv file, or set it to `none` to disable the auto-load.
 
 The same explicit-forwarding rule applies to optional OpenClaw integrations. Use `--pass-brave-search` and `--pass-slack` to copy only the supported Brave Search and Slack variables into the container setup.
@@ -73,6 +79,8 @@ You can keep credentials outside git in a local `.env` file:
 cp .env.example .env
 ```
 
+Put `GH_TOKEN` or `GITHUB_TOKEN` in that `.env` file if you want `gh` to work inside the `nemoclaw` container without an interactive login.
+
 To enable Brave Search for web search and Slack for user communication:
 
 ```bash
@@ -101,6 +109,10 @@ bin/setup_nemoclaw.bash destroy
 ```
 
 `shell` opens a shell in the persistent `nemoclaw` control container. That is where OpenClaw skill data and other per-user state should live. OpenClaw skills are stored under `/home/nemoclaw/.openclaw/skills`.
+
+From that shell, you can work directly in `/workspace/claw_coder` and use `git` or `gh` against the mounted repository.
+
+For noninteractive GitHub access, set `GH_TOKEN` or `GITHUB_TOKEN` in `.env` before starting the container.
 
 ## OpenClaw Integrations
 
@@ -173,6 +185,8 @@ bin/setup_nemoclaw.bash --n-gpu-layers 999 up
 The tool resolves the GGUF file from the `repo_id:quant` form through Hugging Face Hub, then starts `llama-server` with the local file path. The Hugging Face download cache and the local model directory are both backed by named Docker volumes, so downloads survive container recreation.
 
 The persistent `nemoclaw` user is there so OpenClaw skill data and other per-user state can live across container rebuilds. OpenClaw skill data survives via the `/home/nemoclaw/.openclaw/skills` volume.
+
+The control container can also be used for GitHub operations because the repository is mounted in-place and `gh` is installed in the image.
 
 Sources used while choosing defaults:
 
