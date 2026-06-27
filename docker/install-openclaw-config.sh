@@ -93,10 +93,9 @@ cat >/home/nemoclaw/.openclaw/openclaw.json <<EOF
       appToken: { source: "env", provider: "default", id: "SLACK_APP_TOKEN" },
       groupPolicy: "allowlist",
       channels: {
-        "${SLACK_CHANNEL_ID}": {
-          allow: true,
-          requireMention: false,
-        },
+      "${SLACK_CHANNEL_ID}": {
+        requireMention: false,
+      },
       },
     },
   },
