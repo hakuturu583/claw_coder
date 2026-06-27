@@ -64,6 +64,12 @@ bin/setup_nemoclaw.bash up
 bin/setup_nemoclaw.bash test
 ```
 
+If you want a smaller model for low-VRAM testing, run:
+
+```bash
+bin/setup_nemoclaw.bash --ornith-size 9b up
+```
+
 You can also run `docker compose up` directly. On the first start, the inference container will build `llama-server` automatically before serving requests, and the control container will wait for inference, write `~/.openclaw/openclaw.json`, and start `openclaw gateway`.
 
 For a gated/private download:
@@ -83,6 +89,7 @@ Put `GH_TOKEN` or `GITHUB_TOKEN` in that `.env` file if you want `gh` to work in
 
 The OpenClaw Slack Channel expects `SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN`, and `SLACK_CHANNEL_ID` in `.env` or the host environment.
 Brave web search expects `BRAVE_API_KEY` or `BRAVE_SEARCH_API_KEY`.
+Set `NEMOCLAW_ORNITH_SIZE=9b` if you want the smaller preset by default.
 
 ```bash
 bin/setup_nemoclaw.bash configure-openclaw
@@ -171,6 +178,12 @@ Install a pinned llama.cpp release tag:
 
 ```bash
 bin/setup_nemoclaw.bash --llama-cpp-tag b9803 up
+```
+
+Choose the smaller Ornith model preset:
+
+```bash
+bin/setup_nemoclaw.bash --ornith-size 9b up
 ```
 
 Choose the llama.cpp CUDA build variant:

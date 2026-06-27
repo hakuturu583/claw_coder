@@ -23,9 +23,26 @@ fi
 
 INSTANCE="${NEMOCLAW_INSTANCE:-nemoclaw-vllm}"
 IMAGE="${NEMOCLAW_IMAGE:-ubuntu:24.04}"
-MODEL="${NEMOCLAW_MODEL:-deepreinforce-ai/Ornith-1.0-35B-GGUF:Q4_K_M}"
-TOKENIZER="${NEMOCLAW_TOKENIZER:-deepreinforce-ai/Ornith-1.0-35B-GGUF}"
-HF_CONFIG_PATH="${NEMOCLAW_HF_CONFIG_PATH:-deepreinforce-ai/Ornith-1.0-35B-GGUF}"
+ORNITH_SIZE="${NEMOCLAW_ORNITH_SIZE:-35b}"
+case "$ORNITH_SIZE" in
+  35b)
+    ORNITH_MODEL_DEFAULT="deepreinforce-ai/Ornith-1.0-35B-GGUF:Q4_K_M"
+    ORNITH_TOKENIZER_DEFAULT="deepreinforce-ai/Ornith-1.0-35B-GGUF"
+    ORNITH_HF_CONFIG_DEFAULT="deepreinforce-ai/Ornith-1.0-35B-GGUF"
+    ;;
+  9b)
+    ORNITH_MODEL_DEFAULT="deepreinforce-ai/Ornith-1.0-9B-GGUF:Q4_K_M"
+    ORNITH_TOKENIZER_DEFAULT="deepreinforce-ai/Ornith-1.0-9B-GGUF"
+    ORNITH_HF_CONFIG_DEFAULT="deepreinforce-ai/Ornith-1.0-9B-GGUF"
+    ;;
+  *)
+    die "unsupported ornith size: $ORNITH_SIZE (expected 35b or 9b)"
+    ;;
+esac
+
+MODEL="${NEMOCLAW_MODEL:-$ORNITH_MODEL_DEFAULT}"
+TOKENIZER="${NEMOCLAW_TOKENIZER:-$ORNITH_TOKENIZER_DEFAULT}"
+HF_CONFIG_PATH="${NEMOCLAW_HF_CONFIG_PATH:-$ORNITH_HF_CONFIG_DEFAULT}"
 HF_OVERRIDES="${NEMOCLAW_HF_OVERRIDES:-}"
 GGUF_FILE="${NEMOCLAW_GGUF_FILE:-}"
 API_HOST="${NEMOCLAW_API_HOST:-0.0.0.0}"
@@ -54,6 +71,7 @@ Global options:
   --instance NAME        Compose project name (default: $INSTANCE)
   --image IMAGE          Base image used by the Dockerfile (default: $IMAGE)
   --model MODEL          GGUF model id/path (default: $MODEL)
+  --ornith-size SIZE     Ornith preset size: 35b or 9b (default: $ORNITH_SIZE)
   --tokenizer MODEL      tokenizer repo/path (default: $TOKENIZER)
   --hf-config-path MODEL  Deprecated compatibility option (default: $HF_CONFIG_PATH)
   --hf-overrides JSON    Deprecated compatibility option
@@ -393,6 +411,25 @@ while [[ $# -gt 0 ]]; do
     --instance) INSTANCE="${2:?missing value}"; shift 2 ;;
     --image) IMAGE="${2:?missing value}"; shift 2 ;;
     --model) MODEL="${2:?missing value}"; shift 2 ;;
+    --ornith-size)
+      ORNITH_SIZE="${2:?missing value}"
+      case "$ORNITH_SIZE" in
+        35b)
+          MODEL="deepreinforce-ai/Ornith-1.0-35B-GGUF:Q4_K_M"
+          TOKENIZER="deepreinforce-ai/Ornith-1.0-35B-GGUF"
+          HF_CONFIG_PATH="deepreinforce-ai/Ornith-1.0-35B-GGUF"
+          ;;
+        9b)
+          MODEL="deepreinforce-ai/Ornith-1.0-9B-GGUF:Q4_K_M"
+          TOKENIZER="deepreinforce-ai/Ornith-1.0-9B-GGUF"
+          HF_CONFIG_PATH="deepreinforce-ai/Ornith-1.0-9B-GGUF"
+          ;;
+        *)
+          die "unsupported ornith size: $ORNITH_SIZE (expected 35b or 9b)"
+          ;;
+      esac
+      shift 2
+      ;;
     --tokenizer) TOKENIZER="${2:?missing value}"; shift 2 ;;
     --hf-config-path) HF_CONFIG_PATH="${2:?missing value}"; shift 2 ;;
     --hf-overrides) HF_OVERRIDES="${2:?missing value}"; shift 2 ;;
