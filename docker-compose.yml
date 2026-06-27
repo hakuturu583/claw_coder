@@ -7,6 +7,25 @@ services:
         BASE_IMAGE: ${NEMOCLAW_IMAGE:-ubuntu:24.04}
     image: nemoclaw:local
     restart: unless-stopped
+    entrypoint: ["/usr/bin/tini", "-s", "--", "/opt/nemoclaw/nemoclaw-entrypoint.sh"]
+    environment:
+      HOME: /home/nemoclaw
+      USER: nemoclaw
+      LOGNAME: nemoclaw
+    volumes:
+      - nemoclaw-home:/home/nemoclaw
+      - nemoclaw-skills:/home/nemoclaw/.openclaw/skills
+      - nemoclaw-data:/opt/nemoclaw
+
+  inference:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BASE_IMAGE: ${NEMOCLAW_IMAGE:-ubuntu:24.04}
+    image: nemoclaw:local
+    restart: unless-stopped
+    entrypoint: ["/usr/bin/tini", "-s", "--", "/opt/nemoclaw/inference-entrypoint.sh"]
     environment:
       NEMOCLAW_MODEL: ${NEMOCLAW_MODEL:-deepreinforce-ai/Ornith-1.0-35B-GGUF:Q4_K_M}
       NEMOCLAW_TOKENIZER: ${NEMOCLAW_TOKENIZER:-deepreinforce-ai/Ornith-1.0-35B-GGUF}
@@ -21,19 +40,14 @@ services:
       NEMOCLAW_LLAMA_N_GPU_LAYERS: ${NEMOCLAW_LLAMA_N_GPU_LAYERS:-999}
       NEMOCLAW_ALLOW_UNSUPPORTED_DRIVER: ${NEMOCLAW_ALLOW_UNSUPPORTED_DRIVER:-0}
       NEMOCLAW_HOST_CUDA_VERSION: ${NEMOCLAW_HOST_CUDA_VERSION:-}
-      HOME: /home/nemoclaw
-      USER: nemoclaw
-      LOGNAME: nemoclaw
     volumes:
-      - nemoclaw-home:/home/nemoclaw
       - nemoclaw-data:/opt/nemoclaw
-      - nemoclaw-skills:/opt/nemoclaw/skills
       - nemoclaw-models:/var/lib/nemoclaw/models
       - nemoclaw-hf-cache:/var/lib/nemoclaw/huggingface
 
 volumes:
   nemoclaw-home:
-  nemoclaw-data:
   nemoclaw-skills:
+  nemoclaw-data:
   nemoclaw-models:
   nemoclaw-hf-cache:

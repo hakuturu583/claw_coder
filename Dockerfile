@@ -23,9 +23,8 @@ RUN useradd --create-home --home-dir /home/nemoclaw --shell /bin/bash nemoclaw \
   && install -d -m 0755 /opt/nemoclaw /var/lib/nemoclaw /home/nemoclaw \
   && chown -R nemoclaw:nemoclaw /home/nemoclaw
 
-COPY docker/entrypoint.sh /opt/nemoclaw/entrypoint.sh
-RUN chmod 0755 /opt/nemoclaw/entrypoint.sh
+COPY docker/inference-entrypoint.sh /opt/nemoclaw/inference-entrypoint.sh
+COPY docker/nemoclaw-entrypoint.sh /opt/nemoclaw/nemoclaw-entrypoint.sh
+RUN chmod 0755 /opt/nemoclaw/inference-entrypoint.sh /opt/nemoclaw/nemoclaw-entrypoint.sh
 
 WORKDIR /opt/nemoclaw
-
-ENTRYPOINT ["/usr/bin/tini", "-s", "--", "/opt/nemoclaw/entrypoint.sh"]
