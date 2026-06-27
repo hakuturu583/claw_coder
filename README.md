@@ -82,6 +82,7 @@ cp .env.example .env
 Put `GH_TOKEN` or `GITHUB_TOKEN` in that `.env` file if you want `gh` to work inside the `nemoclaw` container without an interactive login. Set `NEMOCLAW_CHARACTER_NAME=Clawくん` there if you want to override the default character name used by the gateway.
 
 The OpenClaw Slack Channel expects `SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN`, and `SLACK_CHANNEL_ID` in `.env` or the host environment.
+Brave web search expects `BRAVE_API_KEY` or `BRAVE_SEARCH_API_KEY`.
 
 ```bash
 bin/setup_nemoclaw.bash configure-openclaw
@@ -120,6 +121,11 @@ For noninteractive GitHub access, set `GH_TOKEN` or `GITHUB_TOKEN` in `.env` bef
 
 ```text
 gateway.bind = loopback
+tools.profile = coding
+tools.web.search.provider = brave
+tools.web.search.maxResults = 5
+plugins.entries.brave.enabled = true
+plugins.entries.workboard.enabled = true
 agents.defaults.workspace = /workspace/repositories
 agents.defaults.repoRoot = /workspace/repositories
 models.providers.local.baseUrl = http://inference:8000/v1
@@ -132,7 +138,8 @@ channels.slack.channels.<id>.allow = true
 channels.slack.channels.<id>.requireMention = false
 ```
 
-The gateway reads its Slack credentials from the container environment. The control container waits for inference to answer `/v1/models`, writes the config, and then starts `openclaw gateway` as the `nemoclaw` user.
+The gateway reads its Slack credentials and Brave Search key from the container environment. The control container waits for inference to answer `/v1/models`, writes the config, and then starts `openclaw gateway` as the `nemoclaw` user.
+The Brave plugin backs web search, and the Workboard plugin is enabled so OpenClaw Kanban-style task tracking is available inside OpenClaw.
 
 ## Tuning
 

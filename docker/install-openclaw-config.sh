@@ -6,11 +6,47 @@ if [ -z "${SLACK_BOT_TOKEN:-}" ] || [ -z "${SLACK_APP_TOKEN:-}" ] || [ -z "${SLA
   exit 1
 fi
 
+brave_secret_env=""
+if [ -n "${BRAVE_API_KEY:-}" ]; then
+  brave_secret_env="BRAVE_API_KEY"
+elif [ -n "${BRAVE_SEARCH_API_KEY:-}" ]; then
+  brave_secret_env="BRAVE_SEARCH_API_KEY"
+else
+  echo "error: BRAVE_API_KEY or BRAVE_SEARCH_API_KEY is required to enable Brave web search" >&2
+  exit 1
+fi
+
 install -d -o nemoclaw -g nemoclaw -m 0700 /home/nemoclaw/.openclaw
 cat >/home/nemoclaw/.openclaw/openclaw.json <<EOF
 {
   gateway: {
     bind: "loopback",
+  },
+  tools: {
+    profile: "coding",
+    web: {
+      search: {
+        provider: "brave",
+        maxResults: 5,
+        timeoutSeconds: 30,
+      },
+    },
+  },
+  plugins: {
+    entries: {
+      brave: {
+        enabled: true,
+        config: {
+          webSearch: {
+            apiKey: { source: "env", provider: "default", id: "${brave_secret_env}" },
+          },
+        },
+      },
+      workboard: {
+        enabled: true,
+        config: {},
+      },
+    },
   },
   agents: {
     defaults: {
