@@ -8,7 +8,7 @@ services:
     image: nemoclaw:local
     restart: unless-stopped
     entrypoint: ["/usr/bin/tini", "-s", "--", "/opt/nemoclaw/nemoclaw-entrypoint.sh"]
-    working_dir: /workspace/claw_coder
+    working_dir: /workspace/repositories
     environment:
       HOME: /home/nemoclaw
       USER: nemoclaw
@@ -19,7 +19,7 @@ services:
       - nemoclaw-home:/home/nemoclaw
       - nemoclaw-skills:/home/nemoclaw/.openclaw/skills
       - nemoclaw-data:/opt/nemoclaw
-      - .:/workspace/claw_coder
+      - ./repositories:/workspace/repositories
 
   inference:
     build:
