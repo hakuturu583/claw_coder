@@ -24,7 +24,6 @@ services:
       HOME: /home/nemoclaw
       USER: nemoclaw
       LOGNAME: nemoclaw
-      CODEX_HOME: /home/nemoclaw/.codex
     volumes:
       - nemoclaw-home:/home/nemoclaw
       - nemoclaw-data:/opt/nemoclaw

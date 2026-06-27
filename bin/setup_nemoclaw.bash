@@ -637,7 +637,7 @@ cmd_shell() {
   if compose ps -q "$SERVICE" >/dev/null 2>&1 && [[ -n "$(compose ps -q "$SERVICE" 2>/dev/null || true)" ]]; then
     compose exec -u nemoclaw "$SERVICE" bash -l
   else
-    compose run --rm --no-deps --build --user root --entrypoint bash "$SERVICE" -lc 'install -d -o nemoclaw -g nemoclaw -m 0755 /home/nemoclaw/.codex /home/nemoclaw/.codex/skills && exec gosu nemoclaw:nemoclaw bash -l'
+    compose run --rm --no-deps --build --user root --entrypoint bash "$SERVICE" -lc 'install -d -o nemoclaw -g nemoclaw -m 0755 /home/nemoclaw/.openclaw /home/nemoclaw/.openclaw/skills && exec gosu nemoclaw:nemoclaw bash -l'
   fi
 }
 
