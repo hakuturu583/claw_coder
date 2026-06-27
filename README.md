@@ -5,6 +5,7 @@
 The runtime keeps the container state in named volumes:
 
 - `/home/nemoclaw` for Codex/NemoClaw state, including `~/.codex/skills`
+- `/opt/nemoclaw/skills` for OpenClaw skill data
 - `/var/lib/nemoclaw/models` for Hugging Face model files
 - `/var/lib/nemoclaw/huggingface` for the Hugging Face cache
 
@@ -18,6 +19,7 @@ The same explicit-forwarding rule applies to optional OpenClaw integrations. Use
 
 - Docker Compose project: `nemoclaw-vllm`
 - Persistent user home for NemoClaw/Codex: `/home/nemoclaw`
+- Persistent OpenClaw skill directory: `/opt/nemoclaw/skills`
 - Persistent Hugging Face model directory: `/var/lib/nemoclaw/models`
 - Persistent Hugging Face cache: `/var/lib/nemoclaw/huggingface`
 - Optional host-local proxy port: `--host-port`
@@ -96,7 +98,7 @@ bin/setup_nemoclaw.bash shell
 bin/setup_nemoclaw.bash destroy
 ```
 
-`shell` opens a shell as the persistent `nemoclaw` user. That is where Codex skills and other per-user state should live.
+`shell` opens a shell as the persistent `nemoclaw` user. That is where Codex skills and other per-user state should live. OpenClaw skill data is stored separately under `/opt/nemoclaw/skills`.
 
 ## OpenClaw Integrations
 
@@ -168,7 +170,7 @@ bin/setup_nemoclaw.bash --n-gpu-layers 999 up
 
 The tool resolves the GGUF file from the `repo_id:quant` form through Hugging Face Hub, then starts `llama-server` with the local file path. The Hugging Face download cache and the local model directory are both backed by named Docker volumes, so downloads survive container recreation.
 
-The persistent `nemoclaw` user is there so Codex skills and other per-user state can live across container rebuilds.
+The persistent `nemoclaw` user is there so Codex skills and other per-user state can live across container rebuilds. OpenClaw skill data survives separately via the `/opt/nemoclaw/skills` volume.
 
 Sources used while choosing defaults:
 

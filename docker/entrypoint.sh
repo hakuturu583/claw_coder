@@ -5,6 +5,7 @@ if [ -d /home/nemoclaw ]; then
   chown -R nemoclaw:nemoclaw /home/nemoclaw || true
 fi
 install -d -o nemoclaw -g nemoclaw -m 0755 /home/nemoclaw/.codex /home/nemoclaw/.codex/skills || true
+install -d -o nemoclaw -g nemoclaw -m 0755 /opt/nemoclaw/skills || true
 
 if [ -r /opt/nemoclaw/env ]; then
   . /opt/nemoclaw/env

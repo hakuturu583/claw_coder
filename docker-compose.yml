@@ -28,11 +28,13 @@ services:
     volumes:
       - nemoclaw-home:/home/nemoclaw
       - nemoclaw-data:/opt/nemoclaw
+      - nemoclaw-skills:/opt/nemoclaw/skills
       - nemoclaw-models:/var/lib/nemoclaw/models
       - nemoclaw-hf-cache:/var/lib/nemoclaw/huggingface
 
 volumes:
   nemoclaw-home:
   nemoclaw-data:
+  nemoclaw-skills:
   nemoclaw-models:
   nemoclaw-hf-cache:
