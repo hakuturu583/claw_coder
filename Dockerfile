@@ -21,11 +21,12 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 RUN useradd --create-home --home-dir /home/nemoclaw --shell /bin/bash nemoclaw \
-  && install -d -m 0755 /opt/nemoclaw /var/lib/nemoclaw /home/nemoclaw \
-  && chown -R nemoclaw:nemoclaw /home/nemoclaw
+  && install -d -m 0755 /opt/nemoclaw /var/lib/nemoclaw /home/nemoclaw
 
-COPY docker/inference-entrypoint.sh /opt/nemoclaw/inference-entrypoint.sh
-COPY docker/nemoclaw-entrypoint.sh /opt/nemoclaw/nemoclaw-entrypoint.sh
-RUN chmod 0755 /opt/nemoclaw/inference-entrypoint.sh /opt/nemoclaw/nemoclaw-entrypoint.sh
+COPY docker/inference-entrypoint.sh /usr/local/bin/inference-entrypoint.sh
+COPY docker/install-nemoclaw-inference.sh /usr/local/bin/install-nemoclaw-inference.sh
+COPY docker/nemoclaw-entrypoint.sh /usr/local/bin/nemoclaw-entrypoint.sh
+RUN chmod 0755 /usr/local/bin/inference-entrypoint.sh /usr/local/bin/install-nemoclaw-inference.sh /usr/local/bin/nemoclaw-entrypoint.sh \
+  && chown -R nemoclaw:nemoclaw /home/nemoclaw
 
 WORKDIR /opt/nemoclaw

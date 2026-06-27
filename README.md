@@ -66,6 +66,8 @@ bin/setup_nemoclaw.bash up
 bin/setup_nemoclaw.bash test
 ```
 
+You can also run `docker compose up` directly. On the first start, the inference container will build `llama-server` automatically before serving requests.
+
 For a gated/private download:
 
 ```bash

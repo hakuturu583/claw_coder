@@ -19,8 +19,8 @@ if [ "${NEMOCLAW_CUDA_VARIANT:-cu130}" = "cu130" ]; then
 fi
 
 if [ ! -x /opt/nemoclaw/llama-server ]; then
-  echo "error: /opt/nemoclaw/llama-server is missing. Run 'bin/setup_nemoclaw.bash install' first." >&2
-  exit 1
+  echo "llama-server is missing; installing it now." >&2
+  /usr/local/bin/install-nemoclaw-inference.sh
 fi
 
 exec gosu nemoclaw:nemoclaw /opt/nemoclaw/llama-server \
