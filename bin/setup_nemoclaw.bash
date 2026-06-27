@@ -5,7 +5,8 @@ PROGRAM="${0##*/}"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 COMPOSE_FILE="${PROJECT_DIR}/docker-compose.yml"
-SERVICE="${NEMOCLAW_SERVICE_NAME:-nemoclaw}"
+CONTROL_SERVICE="${NEMOCLAW_SERVICE_NAME:-nemoclaw}"
+INFERENCE_SERVICE="${NEMOCLAW_INFERENCE_SERVICE_NAME:-inference}"
 
 load_env_file() {
   local file="${1:-}"
@@ -75,16 +76,16 @@ Global options:
 Commands:
   init-host              Compose/Docker do not need host initialization
   doctor                 Check host-side requirements
-  create                 Create the Compose project and service container
-  install                Install/build llama.cpp and local agent endpoint config
-  configure-integrations Write Brave Search and Slack config/credentials
+  create                 Create the Compose project and both service containers
+  install                Install/build llama.cpp and inference config
+  configure-integrations Write Brave Search and Slack config/credentials for the control container
   up                     create + install + start
   start                  Start the Compose service
   stop                   Stop the Compose service
   status                 Show Compose status
   logs                   Follow service logs
   test                   Query /v1/models inside the container, or through host port if enabled
-  shell                  Open a scrubbed-env root shell in the container
+  shell                  Open a scrubbed-env root shell in the control container
   destroy                Delete the Compose project and volumes
 
 Environment overrides use the NEMOCLAW_* variables matching the option names.
@@ -202,7 +203,7 @@ compose_runtime_override_file() {
   file="$(mktemp)"
   {
     printf 'services:\n'
-    printf '  %s:\n' "$SERVICE"
+    printf '  %s:\n' "$INFERENCE_SERVICE"
     if [[ "$HOST_PORT" != "none" && -n "$HOST_PORT" ]]; then
       printf '    ports:\n'
       printf '      - "127.0.0.1:%s:%s"\n' "$HOST_PORT" "$API_PORT"
@@ -296,7 +297,7 @@ cmd_install() {
       SLACK_TEAM_ID
   fi
 
-  compose run --rm --no-deps --build "${env_args[@]}" --entrypoint bash "$SERVICE" -s <<'REMOTE'
+  compose run --rm --no-deps --build "${env_args[@]}" --entrypoint bash "$INFERENCE_SERVICE" -s <<'REMOTE'
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 
@@ -500,7 +501,7 @@ cmd_configure_integrations() {
       SLACK_TEAM_ID
   fi
 
-  compose run --rm --no-deps --build "${env_args[@]}" --entrypoint bash "$SERVICE" -s <<'REMOTE'
+  compose run --rm --no-deps --build "${env_args[@]}" --entrypoint bash "$CONTROL_SERVICE" -s <<'REMOTE'
 set -euo pipefail
 
 install -d -m 0755 /opt/nemoclaw /opt/nemoclaw
@@ -582,7 +583,7 @@ cmd_start() {
 wait_for_runtime() {
   if [[ "$HOST_PORT" == "none" || -z "$HOST_PORT" ]]; then
     for _ in $(seq 1 120); do
-      if compose exec -T "$SERVICE" bash -lc 'curl -fsS "http://127.0.0.1:${NEMOCLAW_API_PORT}/v1/models" >/dev/null 2>&1'; then
+      if compose exec -T "$INFERENCE_SERVICE" bash -lc 'curl -fsS "http://127.0.0.1:${NEMOCLAW_API_PORT}/v1/models" >/dev/null 2>&1'; then
         return 0
       fi
       sleep 5
@@ -615,14 +616,14 @@ cmd_status() {
 cmd_logs() {
   require_docker
   require_compose
-  compose logs -f
+  compose logs -f "$INFERENCE_SERVICE"
 }
 
 cmd_test() {
   require_docker
   require_compose
   if [[ "$HOST_PORT" == "none" || -z "$HOST_PORT" ]]; then
-    compose exec -T "$SERVICE" curl -fsS "http://127.0.0.1:${API_PORT}/v1/models"
+    compose exec -T "$INFERENCE_SERVICE" curl -fsS "http://127.0.0.1:${API_PORT}/v1/models"
   elif have jq; then
     curl -fsS "http://127.0.0.1:${HOST_PORT}/v1/models" | jq .
   else
@@ -634,10 +635,10 @@ cmd_test() {
 cmd_shell() {
   require_docker
   require_compose
-  if compose ps -q "$SERVICE" >/dev/null 2>&1 && [[ -n "$(compose ps -q "$SERVICE" 2>/dev/null || true)" ]]; then
-    compose exec -u nemoclaw "$SERVICE" bash -l
+  if compose ps -q "$CONTROL_SERVICE" >/dev/null 2>&1 && [[ -n "$(compose ps -q "$CONTROL_SERVICE" 2>/dev/null || true)" ]]; then
+    compose exec -u nemoclaw "$CONTROL_SERVICE" bash -l
   else
-    compose run --rm --no-deps --build --user root --entrypoint bash "$SERVICE" -lc 'install -d -o nemoclaw -g nemoclaw -m 0755 /home/nemoclaw/.openclaw /home/nemoclaw/.openclaw/skills && exec gosu nemoclaw:nemoclaw bash -l'
+    compose run --rm --no-deps --build --user root --entrypoint bash "$CONTROL_SERVICE" -lc 'install -d -o nemoclaw -g nemoclaw -m 0755 /home/nemoclaw/.openclaw /home/nemoclaw/.openclaw/skills && exec gosu nemoclaw:nemoclaw bash -l'
   fi
 }
 
@@ -651,6 +652,7 @@ cmd_up() {
   cmd_create
   cmd_install
   cmd_start
+  wait_for_runtime
 }
 
 while [[ $# -gt 0 ]]; do

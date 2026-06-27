@@ -1,15 +1,15 @@
 # nemoclaw
 
-`nemoclaw` builds a Docker Compose based local inference runtime for NemoClaw/OpenClaw-style coding agents, then runs `deepreinforce-ai/Ornith-1.0-35B-GGUF` through llama.cpp as a local OpenAI-compatible endpoint.
+`nemoclaw` builds a Docker Compose based local inference runtime for NemoClaw/OpenClaw-style coding agents. It splits the control plane and the model server into separate containers: `nemoclaw` keeps the persistent OpenClaw state, and `inference` runs `deepreinforce-ai/Ornith-1.0-35B-GGUF` through llama.cpp as a local OpenAI-compatible endpoint.
 
-The runtime keeps the container state in named volumes:
+The runtime keeps container state in named volumes:
 
-- `/home/nemoclaw` for NemoClaw/OpenClaw state, including `~/.openclaw/skills`
-- `/opt/nemoclaw/skills` for OpenClaw skill data
+- `/home/nemoclaw` for NemoClaw/OpenClaw state
+- `/home/nemoclaw/.openclaw/skills` for persistent OpenClaw skills
 - `/var/lib/nemoclaw/models` for Hugging Face model files
 - `/var/lib/nemoclaw/huggingface` for the Hugging Face cache
 
-The container runs as the `nemoclaw` user at runtime. That keeps shell state and skill data separate from root while still letting the bootstrap/install steps run as root.
+The `nemoclaw` control container runs as the `nemoclaw` user at runtime. That keeps shell state and skill data separate from root while still letting the bootstrap/install steps run as root.
 
 If a local `.env` file exists next to the command you run, it is sourced before option parsing. Set `NEMOCLAW_ENV_FILE` to point at another dotenv file, or set it to `none` to disable the auto-load.
 
@@ -18,8 +18,10 @@ The same explicit-forwarding rule applies to optional OpenClaw integrations. Use
 ## What It Creates
 
 - Docker Compose project: `nemoclaw-vllm`
+- Control container: `nemoclaw`
+- Inference container: `inference`
 - Persistent user home for NemoClaw/OpenClaw: `/home/nemoclaw`
-- Persistent OpenClaw skill directory: `/opt/nemoclaw/skills`
+- Persistent OpenClaw skill directory: `/home/nemoclaw/.openclaw/skills`
 - Persistent Hugging Face model directory: `/var/lib/nemoclaw/models`
 - Persistent Hugging Face cache: `/var/lib/nemoclaw/huggingface`
 - Optional host-local proxy port: `--host-port`
@@ -77,7 +79,7 @@ To enable Brave Search for web search and Slack for user communication:
 bin/setup_nemoclaw.bash --pass-brave-search --pass-slack configure-integrations
 ```
 
-By default the endpoint is only available inside the container. Add `--host-port` only when you want a host-local proxy published on `127.0.0.1`.
+By default the endpoint is only available inside the inference container. Add `--host-port` only when you want a host-local proxy published on `127.0.0.1`.
 
 NemoClaw or another coding agent should use:
 
@@ -98,7 +100,7 @@ bin/setup_nemoclaw.bash shell
 bin/setup_nemoclaw.bash destroy
 ```
 
-`shell` opens a shell as the persistent `nemoclaw` user. That is where OpenClaw skill data and other per-user state should live. OpenClaw skill data is stored under `/home/nemoclaw/.openclaw/skills` and `/opt/nemoclaw/skills`.
+`shell` opens a shell in the persistent `nemoclaw` control container. That is where OpenClaw skill data and other per-user state should live. OpenClaw skills are stored under `/home/nemoclaw/.openclaw/skills`.
 
 ## OpenClaw Integrations
 
@@ -170,7 +172,7 @@ bin/setup_nemoclaw.bash --n-gpu-layers 999 up
 
 The tool resolves the GGUF file from the `repo_id:quant` form through Hugging Face Hub, then starts `llama-server` with the local file path. The Hugging Face download cache and the local model directory are both backed by named Docker volumes, so downloads survive container recreation.
 
-The persistent `nemoclaw` user is there so OpenClaw skill data and other per-user state can live across container rebuilds. OpenClaw skill data survives via the `/home/nemoclaw/.openclaw/skills` directory and the `/opt/nemoclaw/skills` volume.
+The persistent `nemoclaw` user is there so OpenClaw skill data and other per-user state can live across container rebuilds. OpenClaw skill data survives via the `/home/nemoclaw/.openclaw/skills` volume.
 
 Sources used while choosing defaults:
 
