@@ -6,7 +6,7 @@ services:
       args:
         BASE_IMAGE: ${NEMOCLAW_IMAGE:-ubuntu:24.04}
     image: nemoclaw:local
-    pull_policy: never
+    pull_policy: build
     restart: unless-stopped
     entrypoint: ["/usr/bin/tini", "-s", "--", "/usr/local/bin/nemoclaw-entrypoint.sh"]
     working_dir: /workspace/repositories
@@ -29,7 +29,7 @@ services:
       args:
         BASE_IMAGE: ${NEMOCLAW_IMAGE:-ubuntu:24.04}
     image: nemoclaw:local
-    pull_policy: never
+    pull_policy: build
     restart: unless-stopped
     entrypoint: ["/usr/bin/tini", "-s", "--", "/usr/local/bin/inference-entrypoint.sh"]
     environment:
