@@ -16,7 +16,23 @@ else
   exit 1
 fi
 
-install -d -o nemoclaw -g nemoclaw -m 0700 /home/nemoclaw/.openclaw /home/nemoclaw/.openclaw/workspace
+MODEL_SETTINGS_PATH="${NEMOCLAW_MODEL_SETTINGS_PATH:-/opt/nemoclaw/model-settings.yaml}"
+if [ -x /usr/local/bin/model-settings.py ] && [ -s "$MODEL_SETTINGS_PATH" ]; then
+  eval "$(/usr/local/bin/model-settings.py --config "$MODEL_SETTINGS_PATH" --model "${NEMOCLAW_MODEL:-}" --format shell)"
+fi
+
+echo "info: resolved OpenClaw model settings"
+echo "info:   NEMOCLAW_MODEL=${NEMOCLAW_MODEL:-}"
+echo "info:   NEMOCLAW_MAX_MODEL_LEN=${NEMOCLAW_MAX_MODEL_LEN:-32768}"
+echo "info:   NEMOCLAW_COMPACTION_RESERVE_TOKENS_FLOOR=${NEMOCLAW_COMPACTION_RESERVE_TOKENS_FLOOR:-20000}"
+echo "info:   NEMOCLAW_OPENCLAW_MAX_TOKENS=${NEMOCLAW_OPENCLAW_MAX_TOKENS:-8192}"
+
+install -d -o nemoclaw -g nemoclaw -m 0755 \
+  /home/nemoclaw/.openclaw \
+  /home/nemoclaw/.openclaw/workspace \
+  /home/nemoclaw/.claw_coder \
+  /home/nemoclaw/.claw_coder/logs \
+  /home/nemoclaw/.claw_coder/logs/sessions
 cat >/home/nemoclaw/.openclaw/openclaw.json <<EOF
 {
   gateway: {
@@ -55,11 +71,17 @@ cat >/home/nemoclaw/.openclaw/openclaw.json <<EOF
       },
     },
   },
+  logging: {
+    file: "/home/nemoclaw/.claw_coder/logs/openclaw.log",
+  },
+  session: {
+    store: "/home/nemoclaw/.claw_coder/logs/sessions/sessions.json",
+  },
   agents: {
     defaults: {
       workspace: "/home/nemoclaw/.openclaw/workspace",
       compaction: {
-        reserveTokensFloor: 20000,
+        reserveTokensFloor: ${NEMOCLAW_COMPACTION_RESERVE_TOKENS_FLOOR:-20000},
       },
       model: {
         primary: "local/nemoclaw-local",
@@ -87,7 +109,7 @@ cat >/home/nemoclaw/.openclaw/openclaw.json <<EOF
             input: ["text"],
             cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
             contextWindow: ${NEMOCLAW_MAX_MODEL_LEN:-32768},
-            maxTokens: 8192,
+            maxTokens: ${NEMOCLAW_OPENCLAW_MAX_TOKENS:-8192},
           },
         ],
       },
@@ -97,6 +119,7 @@ cat >/home/nemoclaw/.openclaw/openclaw.json <<EOF
     slack: {
       enabled: true,
       mode: "socket",
+      replyToMode: "first",
       botToken: { source: "env", provider: "default", id: "SLACK_BOT_TOKEN" },
       appToken: { source: "env", provider: "default", id: "SLACK_APP_TOKEN" },
       groupPolicy: "allowlist",
@@ -114,3 +137,7 @@ cat >/home/nemoclaw/.openclaw/openclaw.json <<EOF
 EOF
 chmod 0600 /home/nemoclaw/.openclaw/openclaw.json
 chown nemoclaw:nemoclaw /home/nemoclaw/.openclaw/openclaw.json
+touch /home/nemoclaw/.claw_coder/logs/openclaw.log /home/nemoclaw/.claw_coder/logs/sessions/sessions.json
+chown nemoclaw:nemoclaw /home/nemoclaw/.claw_coder/logs/openclaw.log /home/nemoclaw/.claw_coder/logs/sessions/sessions.json
+chmod 0755 /home/nemoclaw/.claw_coder /home/nemoclaw/.claw_coder/logs /home/nemoclaw/.claw_coder/logs/sessions
+chmod 0644 /home/nemoclaw/.claw_coder/logs/openclaw.log /home/nemoclaw/.claw_coder/logs/sessions/sessions.json

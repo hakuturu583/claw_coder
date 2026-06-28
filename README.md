@@ -88,8 +88,10 @@ cp .env.example .env
 ```
 
 Put `GH_TOKEN` or `GITHUB_TOKEN` in that `.env` file if you want `gh` to work inside the `nemoclaw` container without an interactive login. Set `NEMOCLAW_CHARACTER_NAME=Clawくん` there if you want to override the default character name used by the gateway.
-Set `NEMOCLAW_MODEL=deepreinforce-ai/Ornith-1.0-9B-GGUF:Q4_K_M` in `.env` if you want the smaller model for local testing; the compose stack and the setup script both read that value directly.
+If you are on a shared host, set `NEMOCLAW_UID=$(id -u)` and `NEMOCLAW_GID=$(id -g)` in `.env` so the container user matches the host account that owns the checkout. That keeps `.claw_coder/logs` and the OpenClaw session files readable without `sudo`.
+Set `NEMOCLAW_MODEL=deepreinforce-ai/Ornith-1.0-9B-GGUF:Q4_K_M` in `.env` if you want the smaller model for local testing; the compose stack and the setup script both read that value directly, and `config/model-settings.yaml` uses the model id to pick context and compaction defaults. The control container now also receives `NEMOCLAW_MODEL`, so it can resolve the same model-specific settings when `docker compose up` is used directly.
 If a model needs a non-default chat template for tool use, set `NEMOCLAW_LLAMA_CHAT_TEMPLATE` in `.env` and the inference container will pass it through to `llama.cpp`.
+After changing `NEMOCLAW_UID` or `NEMOCLAW_GID`, rerun `docker compose up --build` so the image rebuilds with the matching container user.
 
 The OpenClaw Slack Channel expects `SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN`, and `SLACK_CHANNEL_ID` in `.env` or the host environment.
 Brave web search expects `BRAVE_API_KEY` or `BRAVE_SEARCH_API_KEY`.
@@ -125,6 +127,7 @@ bin/setup_nemoclaw.bash destroy
 From that shell, you can work directly in `/workspace/repositories` and use `git` or `gh` against the mounted checkouts. OpenClaw's own workspace/bootstrap files live under `/home/nemoclaw/.openclaw/workspace`, and the default `AGENTS.md` is mounted there from `openclaw/AGENTS.md`. A compatibility mount also places the same file at `/workspace/repositories/AGENTS.md`, so repository checkouts stay separate from agent state while the current resolver still finds the default instructions.
 
 For noninteractive GitHub access, set `GH_TOKEN` or `GITHUB_TOKEN` in `.env` before starting the container.
+The control container appends its startup output under `./.claw_coder/logs/` in this repo, bind-mounted into `/home/nemoclaw/.claw_coder/logs/` inside the container. The gateway file log is written to `./.claw_coder/logs/openclaw.log`, while session metadata lives in `./.claw_coder/logs/sessions/sessions.json`; both are created with host-readable permissions so you can inspect them without `sudo`. Session transcripts themselves remain under `~/.openclaw/agents/<agentId>/sessions/*.jsonl` inside the persistent home volume. If startup fails early, check `./.claw_coder/logs/nemoclaw-*.log` first, then `./.claw_coder/logs/openclaw.log` after the gateway reaches `ready`. The startup logs now also print the resolved model settings and context sizes used by the control and inference containers, so you can verify model-specific fallbacks directly from the compose output.
 
 ## OpenClaw Gateway
 
@@ -149,11 +152,14 @@ channels.slack.botToken = env:SLACK_BOT_TOKEN
 channels.slack.appToken = env:SLACK_APP_TOKEN
 channels.slack.channels.<id>.allow = true
 channels.slack.channels.<id>.requireMention = false
+logging.file = /home/nemoclaw/.claw_coder/logs/openclaw.log
+session.store = /home/nemoclaw/.claw_coder/logs/sessions/sessions.json
 ```
 
 The gateway reads its Slack credentials and Brave Search key from the container environment. The control container waits for inference to answer `/v1/models`, writes the config, and then starts `openclaw gateway` as the `nemoclaw` user.
 The Brave plugin backs web search, and the Workboard plugin is enabled so OpenClaw Kanban-style task tracking is available inside OpenClaw. Plugin-owned tools are added through the main tool profile without removing the built-in coding tools.
-Automatic compaction keeps a 20000-token reserve floor so long sessions have enough headroom to continue after summary recovery.
+Slack replies are configured with `replyToMode: "first"`, so the first response to a mention should land in a thread under the triggering message.
+Automatic compaction keeps the configured reserve floor so long sessions have enough headroom to continue after summary recovery.
 
 ## Tuning
 
@@ -164,9 +170,10 @@ bin/setup_nemoclaw.bash \
   --instance nemoclaw-qwen36 \
   --gpu-id all \
   --n-gpu-layers 999 \
-  --max-model-len 32768 \
   up
 ```
+
+The actual context length and compaction reserve are model-specific. You can still override them manually with `NEMOCLAW_MAX_MODEL_LEN` and `NEMOCLAW_COMPACTION_RESERVE_TOKENS_FLOOR` in `.env` when needed.
 
 Expose the endpoint to the host only when explicitly needed:
 

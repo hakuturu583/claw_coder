@@ -14,6 +14,11 @@ export HF_HOME=/var/lib/nemoclaw/huggingface
 export HUGGINGFACE_HUB_CACHE=/var/lib/nemoclaw/huggingface
 export HF_HUB_CACHE=/var/lib/nemoclaw/huggingface
 
+MODEL_SETTINGS_PATH="${NEMOCLAW_MODEL_SETTINGS_PATH:-/opt/nemoclaw/model-settings.yaml}"
+if [ -x /usr/local/bin/model-settings.py ] && [ -s "$MODEL_SETTINGS_PATH" ]; then
+  eval "$(/usr/local/bin/model-settings.py --config "$MODEL_SETTINGS_PATH" --model "${NEMOCLAW_MODEL:-}" --format shell)"
+fi
+
 for _ in $(seq 1 600); do
   if [ -s /opt/nemoclaw/env ]; then
     . /opt/nemoclaw/env
@@ -28,6 +33,13 @@ if [ -z "${NEMOCLAW_LLAMA_MODEL_PATH:-}" ] || [ ! -s "${NEMOCLAW_LLAMA_MODEL_PAT
   echo "error: model was not prepared at /opt/nemoclaw/env" >&2
   exit 1
 fi
+
+echo "info: resolved inference model settings"
+echo "info:   NEMOCLAW_MODEL=${NEMOCLAW_MODEL:-}"
+echo "info:   NEMOCLAW_LLAMA_MODEL_PATH=${NEMOCLAW_LLAMA_MODEL_PATH}"
+echo "info:   NEMOCLAW_MAX_MODEL_LEN=${NEMOCLAW_MAX_MODEL_LEN:-32768}"
+echo "info:   NEMOCLAW_LLAMA_N_GPU_LAYERS=${NEMOCLAW_LLAMA_N_GPU_LAYERS:-999}"
+echo "info:   NEMOCLAW_LLAMA_CHAT_TEMPLATE=${NEMOCLAW_LLAMA_CHAT_TEMPLATE:-<default>}"
 
 if [ -x /app/llama-server ]; then
   llama_server_bin=/app/llama-server

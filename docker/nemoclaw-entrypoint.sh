@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+LOG_DIR=/home/nemoclaw/.claw_coder/logs
+install -d -o nemoclaw -g nemoclaw -m 0755 /home/nemoclaw/.claw_coder "$LOG_DIR" 2>/dev/null || true
+LOG_FILE="$LOG_DIR/nemoclaw-$(date -u +%Y%m%dT%H%M%SZ).log"
+touch "$LOG_FILE" 2>/dev/null || true
+chown nemoclaw:nemoclaw "$LOG_FILE" 2>/dev/null || true
+chmod 0644 "$LOG_FILE" 2>/dev/null || true
+exec > >(tee -a "$LOG_FILE") 2>&1
+trap 'status=$?; echo "info: nemoclaw-entrypoint exiting status=$status log=$LOG_FILE"' EXIT
+echo "info: logging to $LOG_FILE"
+
 if [ -r /opt/nemoclaw/env ]; then
   . /opt/nemoclaw/env
 fi
@@ -13,9 +23,11 @@ fi
 if [ -d /home/nemoclaw ]; then
   install -d -o nemoclaw -g nemoclaw -m 0755 \
     /home/nemoclaw \
+    /home/nemoclaw/.npm \
     /home/nemoclaw/.openclaw \
     /home/nemoclaw/.openclaw/skills \
     /home/nemoclaw/.openclaw/workspace || true
+  chown -R nemoclaw:nemoclaw /home/nemoclaw/.npm /home/nemoclaw/.openclaw /home/nemoclaw/.claw_coder 2>/dev/null || true
 fi
 
 if [ ! -x /opt/openclaw/bin/openclaw ]; then
@@ -27,6 +39,9 @@ gosu nemoclaw:nemoclaw /usr/local/bin/install-openclaw-config.sh
 
 install -d -o nemoclaw -g nemoclaw -m 0700 /tmp/openclaw-1001 || true
 export TMPDIR=/tmp/openclaw-1001
+export NPM_CONFIG_CACHE=/tmp/openclaw-1001/npm-cache
+export npm_config_cache=/tmp/openclaw-1001/npm-cache
+install -d -o nemoclaw -g nemoclaw -m 0755 "$NPM_CONFIG_CACHE" || true
 
 gosu nemoclaw:nemoclaw env HOME=/home/nemoclaw TMPDIR=/tmp/openclaw-1001 openclaw plugins install --force @openclaw/slack
 gosu nemoclaw:nemoclaw env HOME=/home/nemoclaw TMPDIR=/tmp/openclaw-1001 openclaw plugins install --force @openclaw/brave-plugin
@@ -43,4 +58,4 @@ if ! curl -fsS "http://inference:${NEMOCLAW_API_PORT:-8000}/v1/models" >/dev/nul
   exit 1
 fi
 
-exec gosu nemoclaw:nemoclaw env HOME=/home/nemoclaw TMPDIR=/tmp/openclaw-1001 openclaw gateway
+exec gosu nemoclaw:nemoclaw env HOME=/home/nemoclaw TMPDIR=/tmp/openclaw-1001 NPM_CONFIG_CACHE=/tmp/openclaw-1001/npm-cache npm_config_cache=/tmp/openclaw-1001/npm-cache openclaw gateway
