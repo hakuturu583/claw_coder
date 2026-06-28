@@ -5,6 +5,8 @@ services:
       dockerfile: Dockerfile
       args:
         BASE_IMAGE: ${NEMOCLAW_IMAGE:-ubuntu:24.04}
+        NEMOCLAW_UID: ${NEMOCLAW_UID:-1000}
+        NEMOCLAW_GID: ${NEMOCLAW_GID:-1000}
     image: nemoclaw:local
     pull_policy: build
     restart: unless-stopped
@@ -43,6 +45,8 @@ services:
       dockerfile: Dockerfile
       args:
         BASE_IMAGE: ${NEMOCLAW_IMAGE:-ubuntu:24.04}
+        NEMOCLAW_UID: ${NEMOCLAW_UID:-1000}
+        NEMOCLAW_GID: ${NEMOCLAW_GID:-1000}
     image: nemoclaw:local
     pull_policy: build
     restart: "no"

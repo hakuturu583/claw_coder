@@ -88,8 +88,10 @@ cp .env.example .env
 ```
 
 Put `GH_TOKEN` or `GITHUB_TOKEN` in that `.env` file if you want `gh` to work inside the `nemoclaw` container without an interactive login. Set `NEMOCLAW_CHARACTER_NAME=Clawくん` there if you want to override the default character name used by the gateway.
+If you are on a shared host, set `NEMOCLAW_UID=$(id -u)` and `NEMOCLAW_GID=$(id -g)` in `.env` so the container user matches the host account that owns the checkout. That keeps `.claw_coder/logs` and the OpenClaw session files readable without `sudo`.
 Set `NEMOCLAW_MODEL=deepreinforce-ai/Ornith-1.0-9B-GGUF:Q4_K_M` in `.env` if you want the smaller model for local testing; the compose stack and the setup script both read that value directly, and `config/model-settings.yaml` uses the model id to pick context and compaction defaults. The control container now also receives `NEMOCLAW_MODEL`, so it can resolve the same model-specific settings when `docker compose up` is used directly.
 If a model needs a non-default chat template for tool use, set `NEMOCLAW_LLAMA_CHAT_TEMPLATE` in `.env` and the inference container will pass it through to `llama.cpp`.
+After changing `NEMOCLAW_UID` or `NEMOCLAW_GID`, rerun `docker compose up --build` so the image rebuilds with the matching container user.
 
 The OpenClaw Slack Channel expects `SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN`, and `SLACK_CHANNEL_ID` in `.env` or the host environment.
 Brave web search expects `BRAVE_API_KEY` or `BRAVE_SEARCH_API_KEY`.

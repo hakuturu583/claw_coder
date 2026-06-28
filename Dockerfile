@@ -1,5 +1,9 @@
 ARG BASE_IMAGE=ubuntu:24.04
+ARG NEMOCLAW_UID=1000
+ARG NEMOCLAW_GID=1000
 FROM ${BASE_IMAGE}
+ARG NEMOCLAW_UID
+ARG NEMOCLAW_GID
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -24,7 +28,8 @@ RUN apt-get update \
 RUN curl -fsSL --proto '=https' --tlsv1.2 https://openclaw.ai/install-cli.sh \
   | bash -s -- --prefix /opt/openclaw --no-onboard
 
-RUN useradd --create-home --home-dir /home/nemoclaw --shell /bin/bash nemoclaw \
+RUN groupadd --gid "${NEMOCLAW_GID}" nemoclaw \
+  && useradd --create-home --home-dir /home/nemoclaw --shell /bin/bash --uid "${NEMOCLAW_UID}" --gid "${NEMOCLAW_GID}" nemoclaw \
   && install -d -m 0755 /opt/nemoclaw /var/lib/nemoclaw /home/nemoclaw
 
 COPY docker/inference-entrypoint.sh /usr/local/bin/inference-entrypoint.sh
