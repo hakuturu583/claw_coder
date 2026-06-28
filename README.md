@@ -125,6 +125,7 @@ bin/setup_nemoclaw.bash destroy
 From that shell, you can work directly in `/workspace/repositories` and use `git` or `gh` against the mounted checkouts. OpenClaw's own workspace/bootstrap files live under `/home/nemoclaw/.openclaw/workspace`, and the default `AGENTS.md` is mounted there from `openclaw/AGENTS.md`. A compatibility mount also places the same file at `/workspace/repositories/AGENTS.md`, so repository checkouts stay separate from agent state while the current resolver still finds the default instructions.
 
 For noninteractive GitHub access, set `GH_TOKEN` or `GITHUB_TOKEN` in `.env` before starting the container.
+The control container also appends its startup output under `/home/nemoclaw/.claw_coder/logs/` inside the persistent `nemoclaw-home` volume, and OpenClaw's own file logs plus session transcripts are stored there too. That keeps gateway output, conversations, and tool/function-call records across container recreation.
 
 ## OpenClaw Gateway
 
@@ -149,6 +150,8 @@ channels.slack.botToken = env:SLACK_BOT_TOKEN
 channels.slack.appToken = env:SLACK_APP_TOKEN
 channels.slack.channels.<id>.allow = true
 channels.slack.channels.<id>.requireMention = false
+logging.file = /home/nemoclaw/.claw_coder/logs/openclaw.log
+session.store = /home/nemoclaw/.claw_coder/logs/sessions/sessions.json
 ```
 
 The gateway reads its Slack credentials and Brave Search key from the container environment. The control container waits for inference to answer `/v1/models`, writes the config, and then starts `openclaw gateway` as the `nemoclaw` user.

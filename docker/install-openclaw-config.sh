@@ -16,7 +16,12 @@ else
   exit 1
 fi
 
-install -d -o nemoclaw -g nemoclaw -m 0700 /home/nemoclaw/.openclaw /home/nemoclaw/.openclaw/workspace
+install -d -o nemoclaw -g nemoclaw -m 0700 \
+  /home/nemoclaw/.openclaw \
+  /home/nemoclaw/.openclaw/workspace \
+  /home/nemoclaw/.claw_coder \
+  /home/nemoclaw/.claw_coder/logs \
+  /home/nemoclaw/.claw_coder/logs/sessions
 cat >/home/nemoclaw/.openclaw/openclaw.json <<EOF
 {
   gateway: {
@@ -54,6 +59,12 @@ cat >/home/nemoclaw/.openclaw/openclaw.json <<EOF
         config: {},
       },
     },
+  },
+  logging: {
+    file: "/home/nemoclaw/.claw_coder/logs/openclaw.log",
+  },
+  session: {
+    store: "/home/nemoclaw/.claw_coder/logs/sessions/sessions.json",
   },
   agents: {
     defaults: {

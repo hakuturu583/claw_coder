@@ -23,6 +23,15 @@ if [ ! -x /opt/openclaw/bin/openclaw ]; then
   exit 1
 fi
 
+LOG_DIR=/home/nemoclaw/.claw_coder/logs
+install -d -o nemoclaw -g nemoclaw -m 0700 /home/nemoclaw/.claw_coder "$LOG_DIR"
+LOG_FILE="$LOG_DIR/nemoclaw-$(date -u +%Y%m%dT%H%M%SZ).log"
+touch "$LOG_FILE"
+chown nemoclaw:nemoclaw "$LOG_FILE"
+chmod 0600 "$LOG_FILE"
+exec > >(tee -a "$LOG_FILE") 2>&1
+echo "info: logging to $LOG_FILE"
+
 gosu nemoclaw:nemoclaw /usr/local/bin/install-openclaw-config.sh
 
 install -d -o nemoclaw -g nemoclaw -m 0700 /tmp/openclaw-1001 || true
