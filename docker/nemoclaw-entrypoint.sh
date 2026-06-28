@@ -16,7 +16,11 @@ if [ -d /home/nemoclaw ]; then
     /home/nemoclaw/.openclaw \
     /home/nemoclaw/.openclaw/skills \
     /home/nemoclaw/.openclaw/workspace || true
-  chown -R nemoclaw:nemoclaw /home/nemoclaw/.openclaw || true
+  chown nemoclaw:nemoclaw \
+    /home/nemoclaw \
+    /home/nemoclaw/.openclaw \
+    /home/nemoclaw/.openclaw/skills \
+    /home/nemoclaw/.openclaw/workspace || true
 fi
 
 if [ ! -x /opt/openclaw/bin/openclaw ]; then
@@ -27,10 +31,11 @@ fi
 gosu nemoclaw:nemoclaw /usr/local/bin/install-openclaw-config.sh
 
 install -d -o nemoclaw -g nemoclaw -m 0700 /tmp/openclaw-1001 || true
+install -d -o nemoclaw -g nemoclaw -m 0700 /tmp/openclaw-1001/npm || true
 export TMPDIR=/tmp/openclaw-1001
 
-gosu nemoclaw:nemoclaw env HOME=/home/nemoclaw TMPDIR=/tmp/openclaw-1001 openclaw plugins install --force @openclaw/slack
-gosu nemoclaw:nemoclaw env HOME=/home/nemoclaw TMPDIR=/tmp/openclaw-1001 openclaw plugins install --force @openclaw/brave-plugin
+gosu nemoclaw:nemoclaw env HOME=/home/nemoclaw TMPDIR=/tmp/openclaw-1001 NPM_CONFIG_CACHE=/tmp/openclaw-1001/npm openclaw plugins install --force @openclaw/slack
+gosu nemoclaw:nemoclaw env HOME=/home/nemoclaw TMPDIR=/tmp/openclaw-1001 NPM_CONFIG_CACHE=/tmp/openclaw-1001/npm openclaw plugins install --force @openclaw/brave-plugin
 
 for _ in $(seq 1 900); do
   if curl -fsS "http://inference:${NEMOCLAW_API_PORT:-8000}/v1/models" >/dev/null 2>&1; then
@@ -44,4 +49,4 @@ if ! curl -fsS "http://inference:${NEMOCLAW_API_PORT:-8000}/v1/models" >/dev/nul
   exit 1
 fi
 
-exec gosu nemoclaw:nemoclaw env HOME=/home/nemoclaw TMPDIR=/tmp/openclaw-1001 openclaw gateway
+exec gosu nemoclaw:nemoclaw env HOME=/home/nemoclaw TMPDIR=/tmp/openclaw-1001 NPM_CONFIG_CACHE=/tmp/openclaw-1001/npm openclaw gateway
