@@ -140,6 +140,7 @@ tools.web.search.maxResults = 5
 plugins.entries.brave.enabled = true
 plugins.entries.workboard.enabled = true
 agents.defaults.workspace = /home/nemoclaw/.openclaw/workspace
+agents.defaults.compaction.reserveTokensFloor = 20000
 models.providers.local.baseUrl = http://inference:8000/v1
 models.providers.local.apiKey = nemoclaw-local
 channels.slack.enabled = true
@@ -152,6 +153,7 @@ channels.slack.channels.<id>.requireMention = false
 
 The gateway reads its Slack credentials and Brave Search key from the container environment. The control container waits for inference to answer `/v1/models`, writes the config, and then starts `openclaw gateway` as the `nemoclaw` user.
 The Brave plugin backs web search, and the Workboard plugin is enabled so OpenClaw Kanban-style task tracking is available inside OpenClaw. Plugin-owned tools are added through the main tool profile without removing the built-in coding tools.
+Automatic compaction keeps a 20000-token reserve floor so long sessions have enough headroom to continue after summary recovery.
 
 ## Tuning
 

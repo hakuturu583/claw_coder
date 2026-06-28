@@ -28,6 +28,8 @@ instructions are available yet.
 - `/home/nemoclaw/.openclaw/openclaw.json` for gateway and tool policy.
 - `/home/nemoclaw/.openclaw/workspace` for the OpenClaw agent workspace and
   default AGENTS instructions.
+- `agents.defaults.compaction.reserveTokensFloor` is set high enough to keep
+  enough reply headroom during automatic compaction.
 - `/home/nemoclaw` for user-scoped runtime data that should not live in git.
 
 ## Task Handling

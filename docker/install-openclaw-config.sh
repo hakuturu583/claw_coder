@@ -58,6 +58,9 @@ cat >/home/nemoclaw/.openclaw/openclaw.json <<EOF
   agents: {
     defaults: {
       workspace: "/home/nemoclaw/.openclaw/workspace",
+      compaction: {
+        reserveTokensFloor: 20000,
+      },
       model: {
         primary: "local/nemoclaw-local",
       },
