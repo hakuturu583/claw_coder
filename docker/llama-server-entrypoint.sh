@@ -14,6 +14,11 @@ export HF_HOME=/var/lib/nemoclaw/huggingface
 export HUGGINGFACE_HUB_CACHE=/var/lib/nemoclaw/huggingface
 export HF_HUB_CACHE=/var/lib/nemoclaw/huggingface
 
+MODEL_SETTINGS_PATH="${NEMOCLAW_MODEL_SETTINGS_PATH:-/opt/nemoclaw/model-settings.yaml}"
+if [ -x /usr/local/bin/model-settings.py ] && [ -s "$MODEL_SETTINGS_PATH" ]; then
+  eval "$(/usr/local/bin/model-settings.py --config "$MODEL_SETTINGS_PATH" --model "${NEMOCLAW_MODEL:-}" --format shell)"
+fi
+
 for _ in $(seq 1 600); do
   if [ -s /opt/nemoclaw/env ]; then
     . /opt/nemoclaw/env

@@ -51,10 +51,12 @@ API_PORT="${NEMOCLAW_API_PORT:-8000}"
 HOST_PORT="${NEMOCLAW_HOST_PORT:-none}"
 GPU_ID="${NEMOCLAW_GPU_ID:-all}"
 TP_SIZE="${NEMOCLAW_TENSOR_PARALLEL_SIZE:-1}"
-MAX_MODEL_LEN="${NEMOCLAW_MAX_MODEL_LEN:-32768}"
+MAX_MODEL_LEN="${NEMOCLAW_MAX_MODEL_LEN:-}"
+COMPACTION_RESERVE_TOKENS_FLOOR="${NEMOCLAW_COMPACTION_RESERVE_TOKENS_FLOOR:-}"
+OPENCLAW_MAX_TOKENS="${NEMOCLAW_OPENCLAW_MAX_TOKENS:-}"
 CUDA_VARIANT="${NEMOCLAW_CUDA_VARIANT:-cu130}"
 LLAMA_CPP_TAG="${NEMOCLAW_LLAMA_CPP_TAG:-b9803}"
-LLAMA_N_GPU_LAYERS="${NEMOCLAW_LLAMA_N_GPU_LAYERS:-999}"
+LLAMA_N_GPU_LAYERS="${NEMOCLAW_LLAMA_N_GPU_LAYERS:-}"
 PASS_HF_TOKEN=0
 
 export INSTANCE IMAGE MODEL TOKENIZER HF_CONFIG_PATH HF_OVERRIDES GGUF_FILE
@@ -81,10 +83,10 @@ Global options:
   --host-port PORT       Optional host localhost proxy port, or "none" (default: $HOST_PORT)
   --gpu-id ID            Docker GPU request: all, auto, none, or device ids (default: $GPU_ID)
   --tp-size N            Deprecated compatibility option (default: $TP_SIZE)
-  --max-model-len N      llama.cpp context size (default: $MAX_MODEL_LEN)
+  --max-model-len N      llama.cpp context size (default: model-specific)
   --cuda-variant NAME    Legacy compatibility option retained for older configs (default: $CUDA_VARIANT)
   --llama-cpp-tag TAG    Legacy compatibility option retained for older configs (default: $LLAMA_CPP_TAG)
-  --n-gpu-layers N       llama.cpp GPU offload layers (default: $LLAMA_N_GPU_LAYERS)
+  --n-gpu-layers N       llama.cpp GPU offload layers (default: model-specific)
   --pass-hf-token        Pass only HF_TOKEN/HUGGING_FACE_HUB_TOKEN into setup
   -h, --help             Show help
 
@@ -237,6 +239,19 @@ compose_run_with_env() {
   local -a env_args=()
   append_compose_env_if_set env_args "$@"
   compose run --rm --no-deps --build "${env_args[@]}"
+}
+
+resolve_model_settings() {
+  local settings_script="${PROJECT_DIR}/docker/model-settings.py"
+  local settings_config="${PROJECT_DIR}/config/model-settings.yaml"
+  [[ -f "$settings_script" ]] || return 0
+  [[ -f "$settings_config" ]] || return 0
+  eval "$(
+    python3 "$settings_script" \
+      --config "$settings_config" \
+      --model "$MODEL" \
+      --format shell
+  )"
 }
 
 cmd_init_host() {
@@ -451,6 +466,24 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+export NEMOCLAW_MODEL="$MODEL"
+export NEMOCLAW_MAX_MODEL_LEN="$MAX_MODEL_LEN"
+export NEMOCLAW_COMPACTION_RESERVE_TOKENS_FLOOR="$COMPACTION_RESERVE_TOKENS_FLOOR"
+export NEMOCLAW_OPENCLAW_MAX_TOKENS="$OPENCLAW_MAX_TOKENS"
+export NEMOCLAW_LLAMA_N_GPU_LAYERS="$LLAMA_N_GPU_LAYERS"
+resolve_model_settings
+
+: "${NEMOCLAW_MAX_MODEL_LEN:=32768}"
+: "${NEMOCLAW_COMPACTION_RESERVE_TOKENS_FLOOR:=20000}"
+: "${NEMOCLAW_OPENCLAW_MAX_TOKENS:=8192}"
+: "${NEMOCLAW_LLAMA_N_GPU_LAYERS:=999}"
+
+MODEL="${NEMOCLAW_MODEL}"
+MAX_MODEL_LEN="${NEMOCLAW_MAX_MODEL_LEN}"
+COMPACTION_RESERVE_TOKENS_FLOOR="${NEMOCLAW_COMPACTION_RESERVE_TOKENS_FLOOR}"
+OPENCLAW_MAX_TOKENS="${NEMOCLAW_OPENCLAW_MAX_TOKENS}"
+LLAMA_N_GPU_LAYERS="${NEMOCLAW_LLAMA_N_GPU_LAYERS}"
+
 export INSTANCE IMAGE MODEL TOKENIZER HF_CONFIG_PATH HF_OVERRIDES GGUF_FILE
 export API_HOST API_PORT HOST_PORT GPU_ID TP_SIZE MAX_MODEL_LEN CUDA_VARIANT
 export LLAMA_CPP_TAG LLAMA_N_GPU_LAYERS
@@ -467,6 +500,8 @@ export NEMOCLAW_HOST_PORT="$HOST_PORT"
 export NEMOCLAW_GPU_ID="$GPU_ID"
 export NEMOCLAW_TENSOR_PARALLEL_SIZE="$TP_SIZE"
 export NEMOCLAW_MAX_MODEL_LEN="$MAX_MODEL_LEN"
+export NEMOCLAW_COMPACTION_RESERVE_TOKENS_FLOOR="$COMPACTION_RESERVE_TOKENS_FLOOR"
+export NEMOCLAW_OPENCLAW_MAX_TOKENS="$OPENCLAW_MAX_TOKENS"
 export NEMOCLAW_CUDA_VARIANT="$CUDA_VARIANT"
 export NEMOCLAW_LLAMA_CPP_TAG="$LLAMA_CPP_TAG"
 export NEMOCLAW_LLAMA_N_GPU_LAYERS="$LLAMA_N_GPU_LAYERS"

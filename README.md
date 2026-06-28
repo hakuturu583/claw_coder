@@ -88,7 +88,7 @@ cp .env.example .env
 ```
 
 Put `GH_TOKEN` or `GITHUB_TOKEN` in that `.env` file if you want `gh` to work inside the `nemoclaw` container without an interactive login. Set `NEMOCLAW_CHARACTER_NAME=Clawくん` there if you want to override the default character name used by the gateway.
-Set `NEMOCLAW_MODEL=deepreinforce-ai/Ornith-1.0-9B-GGUF:Q4_K_M` in `.env` if you want the smaller model for local testing; the compose stack and the setup script both read that value directly.
+Set `NEMOCLAW_MODEL=deepreinforce-ai/Ornith-1.0-9B-GGUF:Q4_K_M` in `.env` if you want the smaller model for local testing; the compose stack and the setup script both read that value directly, and `config/model-settings.yaml` uses the model id to pick context and compaction defaults.
 If a model needs a non-default chat template for tool use, set `NEMOCLAW_LLAMA_CHAT_TEMPLATE` in `.env` and the inference container will pass it through to `llama.cpp`.
 
 The OpenClaw Slack Channel expects `SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN`, and `SLACK_CHANNEL_ID` in `.env` or the host environment.
@@ -156,7 +156,7 @@ session.store = /home/nemoclaw/.claw_coder/logs/sessions/sessions.json
 
 The gateway reads its Slack credentials and Brave Search key from the container environment. The control container waits for inference to answer `/v1/models`, writes the config, and then starts `openclaw gateway` as the `nemoclaw` user.
 The Brave plugin backs web search, and the Workboard plugin is enabled so OpenClaw Kanban-style task tracking is available inside OpenClaw. Plugin-owned tools are added through the main tool profile without removing the built-in coding tools.
-Automatic compaction keeps a 20000-token reserve floor so long sessions have enough headroom to continue after summary recovery.
+Automatic compaction keeps the configured reserve floor so long sessions have enough headroom to continue after summary recovery.
 
 ## Tuning
 
@@ -167,9 +167,10 @@ bin/setup_nemoclaw.bash \
   --instance nemoclaw-qwen36 \
   --gpu-id all \
   --n-gpu-layers 999 \
-  --max-model-len 32768 \
   up
 ```
+
+The actual context length and compaction reserve are model-specific. You can still override them manually with `NEMOCLAW_MAX_MODEL_LEN` and `NEMOCLAW_COMPACTION_RESERVE_TOKENS_FLOOR` in `.env` when needed.
 
 Expose the endpoint to the host only when explicitly needed:
 

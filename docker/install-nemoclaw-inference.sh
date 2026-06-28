@@ -9,6 +9,16 @@ export HF_HOME=/var/lib/nemoclaw/huggingface
 export HUGGINGFACE_HUB_CACHE=/var/lib/nemoclaw/huggingface
 export HF_HUB_CACHE=/var/lib/nemoclaw/huggingface
 
+MODEL_SETTINGS_PATH="${NEMOCLAW_MODEL_SETTINGS_PATH:-/opt/nemoclaw/model-settings.yaml}"
+if [ -x /usr/local/bin/model-settings.py ] && [ -s "$MODEL_SETTINGS_PATH" ]; then
+  eval "$(/usr/local/bin/model-settings.py --config "$MODEL_SETTINGS_PATH" --model "${NEMOCLAW_MODEL}" --format shell)"
+fi
+
+: "${NEMOCLAW_MAX_MODEL_LEN:=32768}"
+: "${NEMOCLAW_COMPACTION_RESERVE_TOKENS_FLOOR:=20000}"
+: "${NEMOCLAW_OPENCLAW_MAX_TOKENS:=8192}"
+: "${NEMOCLAW_LLAMA_N_GPU_LAYERS:=999}"
+
 rm -rf /opt/nemoclaw/venv
 python3 -m venv /opt/nemoclaw/venv
 . /opt/nemoclaw/venv/bin/activate
@@ -47,8 +57,10 @@ fi
   printf 'NEMOCLAW_CHARACTER_NAME=%q\n' "$NEMOCLAW_CHARACTER_NAME"
   printf 'NEMOCLAW_API_HOST=%q\n' "$NEMOCLAW_API_HOST"
   printf 'NEMOCLAW_API_PORT=%q\n' "$NEMOCLAW_API_PORT"
-  printf 'NEMOCLAW_MAX_MODEL_LEN=%q\n' "$NEMOCLAW_MAX_MODEL_LEN"
-  printf 'NEMOCLAW_LLAMA_N_GPU_LAYERS=%q\n' "$NEMOCLAW_LLAMA_N_GPU_LAYERS"
+  printf 'NEMOCLAW_MAX_MODEL_LEN=%q\n' "${NEMOCLAW_MAX_MODEL_LEN:-}"
+  printf 'NEMOCLAW_COMPACTION_RESERVE_TOKENS_FLOOR=%q\n' "${NEMOCLAW_COMPACTION_RESERVE_TOKENS_FLOOR:-}"
+  printf 'NEMOCLAW_OPENCLAW_MAX_TOKENS=%q\n' "${NEMOCLAW_OPENCLAW_MAX_TOKENS:-}"
+  printf 'NEMOCLAW_LLAMA_N_GPU_LAYERS=%q\n' "${NEMOCLAW_LLAMA_N_GPU_LAYERS:-}"
 } >/opt/nemoclaw/env
 chmod 0600 /opt/nemoclaw/env
 

@@ -31,8 +31,8 @@ instructions are available yet.
 - `./.claw_coder/logs` in this repo, bind-mounted to
   `/home/nemoclaw/.claw_coder/logs`, for persistent gateway logs, session
   transcripts, and tool/function-call records.
-- `agents.defaults.compaction.reserveTokensFloor` is set high enough to keep
-  enough reply headroom during automatic compaction.
+- `agents.defaults.compaction.reserveTokensFloor` is resolved from
+  `config/model-settings.yaml` so the compaction headroom can vary by model.
 - `/home/nemoclaw` for user-scoped runtime data that should not live in git.
 
 ## Task Handling

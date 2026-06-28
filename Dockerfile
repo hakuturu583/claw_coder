@@ -16,6 +16,7 @@ RUN apt-get update \
     jq \
     python3 \
     python3-pip \
+    python3-yaml \
     python3-venv \
     tini \
   && rm -rf /var/lib/apt/lists/*
@@ -29,8 +30,9 @@ RUN useradd --create-home --home-dir /home/nemoclaw --shell /bin/bash nemoclaw \
 COPY docker/inference-entrypoint.sh /usr/local/bin/inference-entrypoint.sh
 COPY docker/install-nemoclaw-inference.sh /usr/local/bin/install-nemoclaw-inference.sh
 COPY docker/install-openclaw-config.sh /usr/local/bin/install-openclaw-config.sh
+COPY docker/model-settings.py /usr/local/bin/model-settings.py
 COPY docker/nemoclaw-entrypoint.sh /usr/local/bin/nemoclaw-entrypoint.sh
-RUN chmod 0755 /usr/local/bin/inference-entrypoint.sh /usr/local/bin/install-nemoclaw-inference.sh /usr/local/bin/install-openclaw-config.sh /usr/local/bin/nemoclaw-entrypoint.sh \
+RUN chmod 0755 /usr/local/bin/inference-entrypoint.sh /usr/local/bin/install-nemoclaw-inference.sh /usr/local/bin/install-openclaw-config.sh /usr/local/bin/model-settings.py /usr/local/bin/nemoclaw-entrypoint.sh \
   && chown -R nemoclaw:nemoclaw /home/nemoclaw
 
 ENV PATH=/opt/openclaw/bin:${PATH}

@@ -16,6 +16,11 @@ else
   exit 1
 fi
 
+MODEL_SETTINGS_PATH="${NEMOCLAW_MODEL_SETTINGS_PATH:-/opt/nemoclaw/model-settings.yaml}"
+if [ -x /usr/local/bin/model-settings.py ] && [ -s "$MODEL_SETTINGS_PATH" ]; then
+  eval "$(/usr/local/bin/model-settings.py --config "$MODEL_SETTINGS_PATH" --model "${NEMOCLAW_MODEL:-}" --format shell)"
+fi
+
 install -d -o nemoclaw -g nemoclaw -m 0700 \
   /home/nemoclaw/.openclaw \
   /home/nemoclaw/.openclaw/workspace \
@@ -70,7 +75,7 @@ cat >/home/nemoclaw/.openclaw/openclaw.json <<EOF
     defaults: {
       workspace: "/home/nemoclaw/.openclaw/workspace",
       compaction: {
-        reserveTokensFloor: 20000,
+        reserveTokensFloor: ${NEMOCLAW_COMPACTION_RESERVE_TOKENS_FLOOR:-20000},
       },
       model: {
         primary: "local/nemoclaw-local",
@@ -98,7 +103,7 @@ cat >/home/nemoclaw/.openclaw/openclaw.json <<EOF
             input: ["text"],
             cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
             contextWindow: ${NEMOCLAW_MAX_MODEL_LEN:-32768},
-            maxTokens: 8192,
+            maxTokens: ${NEMOCLAW_OPENCLAW_MAX_TOKENS:-8192},
           },
         ],
       },

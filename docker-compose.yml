@@ -16,6 +16,9 @@ services:
       LOGNAME: nemoclaw
       NEMOCLAW_CHARACTER_NAME: ${NEMOCLAW_CHARACTER_NAME:-Clawくん}
       NEMOCLAW_API_PORT: ${NEMOCLAW_API_PORT:-8000}
+      NEMOCLAW_MAX_MODEL_LEN: ${NEMOCLAW_MAX_MODEL_LEN:-}
+      NEMOCLAW_COMPACTION_RESERVE_TOKENS_FLOOR: ${NEMOCLAW_COMPACTION_RESERVE_TOKENS_FLOOR:-}
+      NEMOCLAW_OPENCLAW_MAX_TOKENS: ${NEMOCLAW_OPENCLAW_MAX_TOKENS:-}
       BRAVE_API_KEY: ${BRAVE_API_KEY:-}
       BRAVE_SEARCH_API_KEY: ${BRAVE_SEARCH_API_KEY:-}
       SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
@@ -28,6 +31,7 @@ services:
       - ./.claw_coder/logs:/home/nemoclaw/.claw_coder/logs
       - nemoclaw-skills:/home/nemoclaw/.openclaw/skills
       - nemoclaw-data:/opt/nemoclaw
+      - ./config/model-settings.yaml:/opt/nemoclaw/model-settings.yaml:ro
       - ./openclaw/AGENTS.md:/home/nemoclaw/.openclaw/workspace/AGENTS.md:ro
       - ./openclaw/AGENTS.md:/workspace/repositories/AGENTS.md:ro
       - ./repositories:/workspace/repositories
@@ -48,14 +52,17 @@ services:
       NEMOCLAW_CHARACTER_NAME: ${NEMOCLAW_CHARACTER_NAME:-Clawくん}
       NEMOCLAW_API_HOST: ${NEMOCLAW_API_HOST:-0.0.0.0}
       NEMOCLAW_API_PORT: ${NEMOCLAW_API_PORT:-8000}
-      NEMOCLAW_MAX_MODEL_LEN: ${NEMOCLAW_MAX_MODEL_LEN:-32768}
-      NEMOCLAW_LLAMA_N_GPU_LAYERS: ${NEMOCLAW_LLAMA_N_GPU_LAYERS:-999}
+      NEMOCLAW_MAX_MODEL_LEN: ${NEMOCLAW_MAX_MODEL_LEN:-}
+      NEMOCLAW_COMPACTION_RESERVE_TOKENS_FLOOR: ${NEMOCLAW_COMPACTION_RESERVE_TOKENS_FLOOR:-}
+      NEMOCLAW_OPENCLAW_MAX_TOKENS: ${NEMOCLAW_OPENCLAW_MAX_TOKENS:-}
+      NEMOCLAW_LLAMA_N_GPU_LAYERS: ${NEMOCLAW_LLAMA_N_GPU_LAYERS:-}
       HF_TOKEN: ${HF_TOKEN:-}
       HUGGING_FACE_HUB_TOKEN: ${HUGGING_FACE_HUB_TOKEN:-}
     volumes:
       - nemoclaw-data:/opt/nemoclaw
       - nemoclaw-models:/var/lib/nemoclaw/models
       - nemoclaw-hf-cache:/var/lib/nemoclaw/huggingface
+      - ./config/model-settings.yaml:/opt/nemoclaw/model-settings.yaml:ro
 
   inference:
     image: ${NEMOCLAW_LLAMA_IMAGE:-ghcr.io/ggml-org/llama.cpp:server-cuda12}
@@ -68,12 +75,15 @@ services:
       NEMOCLAW_CHARACTER_NAME: ${NEMOCLAW_CHARACTER_NAME:-Clawくん}
       NEMOCLAW_API_HOST: ${NEMOCLAW_API_HOST:-0.0.0.0}
       NEMOCLAW_API_PORT: ${NEMOCLAW_API_PORT:-8000}
-      NEMOCLAW_MAX_MODEL_LEN: ${NEMOCLAW_MAX_MODEL_LEN:-32768}
-      NEMOCLAW_LLAMA_N_GPU_LAYERS: ${NEMOCLAW_LLAMA_N_GPU_LAYERS:-999}
+      NEMOCLAW_MAX_MODEL_LEN: ${NEMOCLAW_MAX_MODEL_LEN:-}
+      NEMOCLAW_COMPACTION_RESERVE_TOKENS_FLOOR: ${NEMOCLAW_COMPACTION_RESERVE_TOKENS_FLOOR:-}
+      NEMOCLAW_OPENCLAW_MAX_TOKENS: ${NEMOCLAW_OPENCLAW_MAX_TOKENS:-}
+      NEMOCLAW_LLAMA_N_GPU_LAYERS: ${NEMOCLAW_LLAMA_N_GPU_LAYERS:-}
     volumes:
       - nemoclaw-data:/opt/nemoclaw
       - nemoclaw-models:/var/lib/nemoclaw/models
       - nemoclaw-hf-cache:/var/lib/nemoclaw/huggingface
+      - ./config/model-settings.yaml:/opt/nemoclaw/model-settings.yaml:ro
       - ./docker/llama-server-entrypoint.sh:/usr/local/bin/llama-server-entrypoint.sh:ro
 
 volumes:
