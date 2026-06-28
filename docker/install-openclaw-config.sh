@@ -42,6 +42,10 @@ cat >/home/nemoclaw/.openclaw/openclaw.json <<EOF
   tools: {
     profile: "coding",
     alsoAllow: ["group:plugins"],
+    toolSearch: {
+      enabled: true,
+      mode: "tools",
+    },
     sandbox: {
       tools: {
         alsoAllow: ["group:plugins"],
