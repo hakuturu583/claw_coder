@@ -18,7 +18,7 @@ The `nemoclaw` control container runs as the `nemoclaw` user at runtime. That ke
 
 The OpenClaw agent workspace lives in `/home/nemoclaw/.openclaw/workspace`. The default OpenClaw agent instructions are mounted there from `openclaw/AGENTS.md`. For compatibility with the current OpenClaw resolver, the same default instructions are also mounted at `/workspace/repositories/AGENTS.md`. The `repositories/` directory is bind-mounted into the `nemoclaw` control container at `/workspace/repositories`, and the image includes `gh` so you can run GitHub CLI commands from inside that container against any checkout under that directory.
 
-The shared Skill Hub is built as its own Docker image, copied into the `skill-hub-data` volume, and mounted at `/opt/nemoclaw/skill-hub`. OpenClaw loads it through `skills.load.extraDirs` as a lower-precedence source than the persistent skills directories. That keeps curated defaults separate from user-scoped overrides in `/home/nemoclaw/.openclaw/skills` or `/home/nemoclaw/.openclaw/workspace/skills`.
+The shared Skill Hub is built as its own Docker image, then kept alive as a dedicated Compose service with its own persistent `skill-hub-data` volume mounted at `/skill-hub` and exposed to OpenClaw at `/opt/nemoclaw/skill-hub`. OpenClaw loads it through `skills.load.extraDirs` as a lower-precedence source than the persistent skills directories. That keeps curated defaults separate from user-scoped overrides in `/home/nemoclaw/.openclaw/skills` or `/home/nemoclaw/.openclaw/workspace/skills`.
 
 If you want `gh` to work without running `gh auth login` inside the container, set `GH_TOKEN` or `GITHUB_TOKEN` in `.env` or the host environment. The control container forwards those variables and stores `gh` state under `/home/nemoclaw`.
 
@@ -132,7 +132,7 @@ bin/setup_nemoclaw.bash destroy
 
 `shell` opens a shell in the persistent `nemoclaw` control container. That is where OpenClaw skill data and other per-user state should live. OpenClaw skills are stored under `/home/nemoclaw/.openclaw/skills`, and the OpenClaw workspace plus default AGENTS instructions live under `/home/nemoclaw/.openclaw/workspace`.
 
-The shared Skill Hub is managed by its own Compose service and synced into `skill-hub-data` before the control container starts. It runs with no network access, is mounted at `/opt/nemoclaw/skill-hub`, and stays separate from the user-owned skill directories by design.
+The shared Skill Hub is managed by its own Compose service with no network access. It keeps its files in the persistent `skill-hub-data` volume, is mounted at `/skill-hub` inside that service, and is exposed read-only to the control container at `/opt/nemoclaw/skill-hub`.
 
 From that shell, you can work directly in `/workspace/repositories` and use `git` or `gh` against the mounted checkouts. OpenClaw's own workspace/bootstrap files live under `/home/nemoclaw/.openclaw/workspace`, and the default `AGENTS.md` is mounted there from `openclaw/AGENTS.md`. A compatibility mount also places the same file at `/workspace/repositories/AGENTS.md`, so repository checkouts stay separate from agent state while the current resolver still finds the default instructions.
 

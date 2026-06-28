@@ -5,16 +5,10 @@ services:
       dockerfile: docker/skill-hub.Dockerfile
     image: nemoclaw:skill-hub
     pull_policy: build
-    restart: "no"
+    restart: unless-stopped
     network_mode: none
-    command:
-      - /bin/sh
-      - -lc
-      - |
-        set -eu
-        mkdir -p /skill-hub
-        find /skill-hub -mindepth 1 -maxdepth 1 -exec rm -rf {} +
-        cp -a /image-skill-hub/. /skill-hub/
+    working_dir: /skill-hub
+    command: ["/bin/sh", "-lc", "trap : TERM INT; sleep infinity & wait"]
     volumes:
       - skill-hub-data:/skill-hub
 
