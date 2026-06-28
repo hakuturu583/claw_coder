@@ -39,6 +39,9 @@ gosu nemoclaw:nemoclaw /usr/local/bin/install-openclaw-config.sh
 
 install -d -o nemoclaw -g nemoclaw -m 0700 /tmp/openclaw-1001 || true
 export TMPDIR=/tmp/openclaw-1001
+export NPM_CONFIG_CACHE=/tmp/openclaw-1001/npm-cache
+export npm_config_cache=/tmp/openclaw-1001/npm-cache
+install -d -o nemoclaw -g nemoclaw -m 0755 "$NPM_CONFIG_CACHE" || true
 
 gosu nemoclaw:nemoclaw env HOME=/home/nemoclaw TMPDIR=/tmp/openclaw-1001 openclaw plugins install --force @openclaw/slack
 gosu nemoclaw:nemoclaw env HOME=/home/nemoclaw TMPDIR=/tmp/openclaw-1001 openclaw plugins install --force @openclaw/brave-plugin
@@ -55,4 +58,4 @@ if ! curl -fsS "http://inference:${NEMOCLAW_API_PORT:-8000}/v1/models" >/dev/nul
   exit 1
 fi
 
-exec gosu nemoclaw:nemoclaw env HOME=/home/nemoclaw TMPDIR=/tmp/openclaw-1001 openclaw gateway
+exec gosu nemoclaw:nemoclaw env HOME=/home/nemoclaw TMPDIR=/tmp/openclaw-1001 NPM_CONFIG_CACHE=/tmp/openclaw-1001/npm-cache npm_config_cache=/tmp/openclaw-1001/npm-cache openclaw gateway
