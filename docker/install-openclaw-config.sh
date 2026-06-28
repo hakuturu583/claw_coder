@@ -25,6 +25,12 @@ cat >/home/nemoclaw/.openclaw/openclaw.json <<EOF
   },
   tools: {
     profile: "coding",
+    alsoAllow: ["group:plugins"],
+    sandbox: {
+      tools: {
+        alsoAllow: ["group:plugins"],
+      },
+    },
     web: {
       search: {
         provider: "brave",

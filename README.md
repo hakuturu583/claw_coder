@@ -1,6 +1,6 @@
 # nemoclaw
 
-`nemoclaw` builds a Docker Compose based local inference runtime for NemoClaw/OpenClaw-style coding agents. It splits the control plane and the model server into separate containers: `nemoclaw` runs the OpenClaw gateway and keeps the persistent OpenClaw state, and `inference` runs a prebuilt `llama.cpp` server image against `deepreinforce-ai/Ornith-1.0-35B-GGUF` as a local OpenAI-compatible endpoint. The default character name is `Clawくん`.
+`nemoclaw` builds a Docker Compose based local inference runtime for NemoClaw/OpenClaw-style coding agents. It splits the control plane and the model server into separate containers: `nemoclaw` runs the OpenClaw gateway and keeps the persistent OpenClaw state, and `inference` runs a prebuilt `llama.cpp` server image against `deepreinforce-ai/Ornith-1.0-35B-GGUF` as a local OpenAI-compatible endpoint. The server starts with `--jinja`, which is the `llama.cpp` side required for tool/function-call style prompts. The default character name is `Clawくん`.
 
 The runtime keeps container state in named volumes:
 
@@ -86,6 +86,7 @@ cp .env.example .env
 ```
 
 Put `GH_TOKEN` or `GITHUB_TOKEN` in that `.env` file if you want `gh` to work inside the `nemoclaw` container without an interactive login. Set `NEMOCLAW_CHARACTER_NAME=Clawくん` there if you want to override the default character name used by the gateway.
+If a model needs a non-default chat template for tool use, set `NEMOCLAW_LLAMA_CHAT_TEMPLATE` in `.env` and the inference container will pass it through to `llama.cpp`.
 
 The OpenClaw Slack Channel expects `SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN`, and `SLACK_CHANNEL_ID` in `.env` or the host environment.
 Brave web search expects `BRAVE_API_KEY` or `BRAVE_SEARCH_API_KEY`.
@@ -129,6 +130,8 @@ For noninteractive GitHub access, set `GH_TOKEN` or `GITHUB_TOKEN` in `.env` bef
 ```text
 gateway.bind = loopback
 tools.profile = coding
+tools.alsoAllow = ["group:plugins"]
+tools.sandbox.tools.alsoAllow = ["group:plugins"]
 tools.web.search.provider = brave
 tools.web.search.maxResults = 5
 plugins.entries.brave.enabled = true
@@ -146,7 +149,7 @@ channels.slack.channels.<id>.requireMention = false
 ```
 
 The gateway reads its Slack credentials and Brave Search key from the container environment. The control container waits for inference to answer `/v1/models`, writes the config, and then starts `openclaw gateway` as the `nemoclaw` user.
-The Brave plugin backs web search, and the Workboard plugin is enabled so OpenClaw Kanban-style task tracking is available inside OpenClaw.
+The Brave plugin backs web search, and the Workboard plugin is enabled so OpenClaw Kanban-style task tracking is available inside OpenClaw. Plugin-owned tools are added through the main tool profile without removing the built-in coding tools.
 
 ## Tuning
 
