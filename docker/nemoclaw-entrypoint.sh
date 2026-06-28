@@ -16,6 +16,7 @@ if [ -d /home/nemoclaw ]; then
     /home/nemoclaw/.openclaw \
     /home/nemoclaw/.openclaw/skills \
     /home/nemoclaw/.openclaw/workspace || true
+  chown -R nemoclaw:nemoclaw /home/nemoclaw/.openclaw || true
 fi
 
 if [ ! -x /opt/openclaw/bin/openclaw ]; then
