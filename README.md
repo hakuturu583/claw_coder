@@ -91,6 +91,7 @@ Set `NEMOCLAW_UID=1000` if you want to keep the container user and the OpenClaw 
 Put `GH_TOKEN` or `GITHUB_TOKEN` in that `.env` file if you want `gh` to work inside the `nemoclaw` container without an interactive login. Set `NEMOCLAW_CHARACTER_NAME=Clawくん` there if you want to override the default character name used by the gateway.
 If you are on a shared host, set `NEMOCLAW_UID=$(id -u)` and `NEMOCLAW_GID=$(id -g)` in `.env` so the container user matches the host account that owns the checkout. That keeps `.claw_coder/logs` and the OpenClaw session files readable without `sudo`.
 Set `NEMOCLAW_MODEL=deepreinforce-ai/Ornith-1.0-9B-GGUF:Q4_K_M` in `.env` if you want the smaller model for local testing; the compose stack and the setup script both read that value directly, and `config/model-settings.yaml` uses the model id to pick context and compaction defaults. The control container now also receives `NEMOCLAW_MODEL`, so it can resolve the same model-specific settings when `docker compose up` is used directly.
+The 9B preset keeps the context window at 32768 so it fits on a 24 GB GPU without the llama.cpp loader trying to allocate an oversized KV cache.
 If a model needs a non-default chat template for tool use, set `NEMOCLAW_LLAMA_CHAT_TEMPLATE` in `.env` and the inference container will pass it through to `llama.cpp`.
 After changing `NEMOCLAW_UID` or `NEMOCLAW_GID`, rerun `docker compose up --build` so the image rebuilds with the matching container user.
 
@@ -145,12 +146,17 @@ tools.web.search.provider = brave
 tools.web.search.maxResults = 5
 plugins.entries.brave.enabled = true
 plugins.entries.workboard.enabled = true
+skills.workshop.autonomous.enabled = false
+skills.workshop.approvalPolicy = pending
+skills.workshop.maxPending = 50
+skills.workshop.maxSkillBytes = 40000
 agents.defaults.workspace = /home/nemoclaw/.openclaw/workspace
 agents.defaults.compaction.reserveTokensFloor = 20000
 models.providers.local.baseUrl = http://inference:8000/v1
 models.providers.local.apiKey = nemoclaw-local
 channels.slack.enabled = true
 channels.slack.mode = socket
+channels.slack.mediaMaxMb = 20
 channels.slack.botToken = env:SLACK_BOT_TOKEN
 channels.slack.appToken = env:SLACK_APP_TOKEN
 channels.slack.channels.<id>.allow = true
@@ -161,7 +167,9 @@ session.store = /home/nemoclaw/.claw_coder/logs/sessions/sessions.json
 
 The gateway reads its Slack credentials and Brave Search key from the container environment. The control container waits for inference to answer `/v1/models`, writes the config, and then starts `openclaw gateway` as the `nemoclaw` user.
 The Brave plugin backs web search, and the Workboard plugin is enabled so OpenClaw Kanban-style task tracking is available inside OpenClaw. Plugin-owned tools are added through the main tool profile without removing the built-in coding tools.
+Skill Workshop is enabled as the governed path for workspace skills, with pending approval for agent-initiated apply/reject/quarantine and no autonomous proposal drafting.
 Slack replies are configured with `replyToMode: "first"`, so the first response to a mention should land in a thread under the triggering message.
+Slack file upload is available through the built-in `upload-file` action, and `channels.slack.mediaMaxMb` caps per-file inbound media handling at 20 MB.
 Automatic compaction keeps the configured reserve floor so long sessions have enough headroom to continue after summary recovery.
 
 ## Tuning

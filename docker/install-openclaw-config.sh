@@ -75,6 +75,16 @@ cat >/home/nemoclaw/.openclaw/openclaw.json <<EOF
       },
     },
   },
+  skills: {
+    workshop: {
+      autonomous: {
+        enabled: false,
+      },
+      approvalPolicy: "pending",
+      maxPending: 50,
+      maxSkillBytes: 40000,
+    },
+  },
   logging: {
     file: "/home/nemoclaw/.claw_coder/logs/openclaw.log",
   },
@@ -124,6 +134,7 @@ cat >/home/nemoclaw/.openclaw/openclaw.json <<EOF
       enabled: true,
       mode: "socket",
       replyToMode: "first",
+      mediaMaxMb: 20,
       botToken: { source: "env", provider: "default", id: "SLACK_BOT_TOKEN" },
       appToken: { source: "env", provider: "default", id: "SLACK_APP_TOKEN" },
       groupPolicy: "allowlist",
