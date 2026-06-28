@@ -16,9 +16,19 @@ instructions are available yet.
 ## Workspace Rules
 
 - Keep OpenClaw workspace state separate from git checkouts.
-- Use the OpenClaw workspace for agent state, bootstrap files, and per-agent
-  notes.
+- Use `/home/nemoclaw/.openclaw` for OpenClaw-standard settings, bootstrap
+  files, skills, and per-agent notes.
+- Use `/home/nemoclaw` for user-owned persistent runtime state that should
+  survive container rebuilds.
 - Keep `repositories/` reserved for checked-out target repos.
+
+## State Layout
+
+- `/home/nemoclaw/.openclaw/skills` for persistent OpenClaw skills.
+- `/home/nemoclaw/.openclaw/openclaw.json` for gateway and tool policy.
+- `/home/nemoclaw/.openclaw/workspace` for the OpenClaw agent workspace and
+  default AGENTS instructions.
+- `/home/nemoclaw` for user-scoped runtime data that should not live in git.
 
 ## Task Handling
 

@@ -4,9 +4,11 @@
 
 The runtime keeps container state in named volumes:
 
-- `/home/nemoclaw` for NemoClaw/OpenClaw state
+- `/home/nemoclaw` for user-owned persistent runtime state
 - `/home/nemoclaw/.openclaw/skills` for persistent OpenClaw skills
 - `/home/nemoclaw/.openclaw/openclaw.json` for the gateway config
+- `/home/nemoclaw/.openclaw/workspace` for OpenClaw's default workspace and
+  default AGENTS instructions
 - `/var/lib/nemoclaw/models` for Hugging Face model files
 - `/var/lib/nemoclaw/huggingface` for the Hugging Face cache
 
@@ -118,7 +120,7 @@ bin/setup_nemoclaw.bash shell
 bin/setup_nemoclaw.bash destroy
 ```
 
-`shell` opens a shell in the persistent `nemoclaw` control container. That is where OpenClaw skill data and other per-user state should live. OpenClaw skills are stored under `/home/nemoclaw/.openclaw/skills`, and the agent workspace is `/home/nemoclaw/.openclaw/workspace`.
+`shell` opens a shell in the persistent `nemoclaw` control container. That is where OpenClaw skill data and other per-user state should live. OpenClaw skills are stored under `/home/nemoclaw/.openclaw/skills`, and the OpenClaw workspace plus default AGENTS instructions live under `/home/nemoclaw/.openclaw/workspace`.
 
 From that shell, you can work directly in `/workspace/repositories` and use `git` or `gh` against the mounted checkouts. OpenClaw's own workspace/bootstrap files live under `/home/nemoclaw/.openclaw/workspace`, and the default `AGENTS.md` is mounted there from `openclaw/AGENTS.md`, so repository checkouts stay separate from agent state.
 
