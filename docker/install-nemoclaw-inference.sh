@@ -9,8 +9,11 @@ export HF_HOME=/var/lib/nemoclaw/huggingface
 export HUGGINGFACE_HUB_CACHE=/var/lib/nemoclaw/huggingface
 export HF_HUB_CACHE=/var/lib/nemoclaw/huggingface
 
-python3 -m pip install --no-cache-dir --upgrade pip wheel "setuptools<80,>=77.0.3"
-python3 -m pip install --no-cache-dir huggingface_hub
+rm -rf /opt/nemoclaw/venv
+python3 -m venv /opt/nemoclaw/venv
+. /opt/nemoclaw/venv/bin/activate
+python -m pip install --no-cache-dir --upgrade pip wheel "setuptools<80,>=77.0.3"
+python -m pip install --no-cache-dir huggingface_hub
 
 llama_model_path="$NEMOCLAW_MODEL"
 if [[ "$NEMOCLAW_MODEL" == *:* ]]; then
@@ -23,7 +26,7 @@ if [[ "$NEMOCLAW_MODEL" == *:* ]]; then
     repo_base="${repo_base%-gguf}"
     gguf_file="${repo_base}-${quant_name}.gguf"
   fi
-  llama_model_path="$(python3 - "$model_repo" "$gguf_file" <<'PY'
+  llama_model_path="$(python - "$model_repo" "$gguf_file" <<'PY'
 import sys
 from huggingface_hub import hf_hub_download
 

@@ -29,7 +29,16 @@ if [ -z "${NEMOCLAW_LLAMA_MODEL_PATH:-}" ] || [ ! -s "${NEMOCLAW_LLAMA_MODEL_PAT
   exit 1
 fi
 
-exec llama-server \
+if [ -x /app/llama-server ]; then
+  llama_server_bin=/app/llama-server
+elif command -v llama-server >/dev/null 2>&1; then
+  llama_server_bin="$(command -v llama-server)"
+else
+  echo "error: llama-server binary not found in the llama.cpp image" >&2
+  exit 1
+fi
+
+exec "$llama_server_bin" \
   --model "${NEMOCLAW_LLAMA_MODEL_PATH}" \
   --host "${NEMOCLAW_API_HOST:-0.0.0.0}" \
   --port "${NEMOCLAW_API_PORT:-8000}" \
