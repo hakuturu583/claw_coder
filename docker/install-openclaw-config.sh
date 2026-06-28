@@ -27,7 +27,7 @@ echo "info:   NEMOCLAW_MAX_MODEL_LEN=${NEMOCLAW_MAX_MODEL_LEN:-32768}"
 echo "info:   NEMOCLAW_COMPACTION_RESERVE_TOKENS_FLOOR=${NEMOCLAW_COMPACTION_RESERVE_TOKENS_FLOOR:-20000}"
 echo "info:   NEMOCLAW_OPENCLAW_MAX_TOKENS=${NEMOCLAW_OPENCLAW_MAX_TOKENS:-8192}"
 
-install -d -o nemoclaw -g nemoclaw -m 0700 \
+install -d -o nemoclaw -g nemoclaw -m 0755 \
   /home/nemoclaw/.openclaw \
   /home/nemoclaw/.openclaw/workspace \
   /home/nemoclaw/.claw_coder \
@@ -136,3 +136,7 @@ cat >/home/nemoclaw/.openclaw/openclaw.json <<EOF
 EOF
 chmod 0600 /home/nemoclaw/.openclaw/openclaw.json
 chown nemoclaw:nemoclaw /home/nemoclaw/.openclaw/openclaw.json
+touch /home/nemoclaw/.claw_coder/logs/openclaw.log /home/nemoclaw/.claw_coder/logs/sessions/sessions.json
+chown nemoclaw:nemoclaw /home/nemoclaw/.claw_coder/logs/openclaw.log /home/nemoclaw/.claw_coder/logs/sessions/sessions.json
+chmod 0755 /home/nemoclaw/.claw_coder /home/nemoclaw/.claw_coder/logs /home/nemoclaw/.claw_coder/logs/sessions
+chmod 0644 /home/nemoclaw/.claw_coder/logs/openclaw.log /home/nemoclaw/.claw_coder/logs/sessions/sessions.json

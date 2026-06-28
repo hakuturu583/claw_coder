@@ -2,11 +2,11 @@
 set -euo pipefail
 
 LOG_DIR=/home/nemoclaw/.claw_coder/logs
-install -d -o nemoclaw -g nemoclaw -m 0700 /home/nemoclaw/.claw_coder "$LOG_DIR" 2>/dev/null || true
+install -d -o nemoclaw -g nemoclaw -m 0755 /home/nemoclaw/.claw_coder "$LOG_DIR" 2>/dev/null || true
 LOG_FILE="$LOG_DIR/nemoclaw-$(date -u +%Y%m%dT%H%M%SZ).log"
 touch "$LOG_FILE" 2>/dev/null || true
 chown nemoclaw:nemoclaw "$LOG_FILE" 2>/dev/null || true
-chmod 0600 "$LOG_FILE" 2>/dev/null || true
+chmod 0644 "$LOG_FILE" 2>/dev/null || true
 exec > >(tee -a "$LOG_FILE") 2>&1
 trap 'status=$?; echo "info: nemoclaw-entrypoint exiting status=$status log=$LOG_FILE"' EXIT
 echo "info: logging to $LOG_FILE"
