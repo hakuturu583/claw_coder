@@ -35,6 +35,7 @@ services:
       - nemoclaw-home:/home/nemoclaw
       - ./.claw_coder/logs:/home/nemoclaw/.claw_coder/logs
       - nemoclaw-skills:/home/nemoclaw/.openclaw/skills
+      - ./openclaw/skills:/opt/nemoclaw/skills:ro
       - nemoclaw-data:/opt/nemoclaw
       - ./config/model-settings.yaml:/opt/nemoclaw/model-settings.yaml:ro
       - ./openclaw/AGENTS.md:/home/nemoclaw/.openclaw/workspace/AGENTS.md:ro

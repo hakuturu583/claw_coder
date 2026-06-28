@@ -76,6 +76,9 @@ cat >/home/nemoclaw/.openclaw/openclaw.json <<EOF
     },
   },
   skills: {
+    load: {
+      extraDirs: ["/opt/nemoclaw/skills"],
+    },
     workshop: {
       autonomous: {
         enabled: false,
