@@ -96,6 +96,7 @@ Commands:
   create                 Create the Compose project and both service containers
   install                Prepare the model cache and inference config
   configure-openclaw     Write the OpenClaw gateway config for the control container
+  sandbox-image          Build the Docker sandbox image used by OpenClaw session sandboxes
   up                     create + install + start
   start                  Start the Compose service
   stop                   Stop the Compose service
@@ -305,6 +306,20 @@ cmd_configure_openclaw() {
   compose run --rm --no-deps --build --entrypoint /usr/local/bin/install-openclaw-config.sh "$CONTROL_SERVICE"
 
   printf 'configured OpenClaw gateway metadata in %s\n' "$INSTANCE"
+}
+
+cmd_sandbox_image() {
+  require_docker
+  local image="${NEMOCLAW_SANDBOX_IMAGE:-openclaw-sandbox-common:bookworm-slim}"
+  local uid="${NEMOCLAW_UID:-1000}"
+  local gid="${NEMOCLAW_GID:-1000}"
+  docker build \
+    -f "${PROJECT_DIR}/docker/sandbox.Dockerfile" \
+    --build-arg "SANDBOX_UID=${uid}" \
+    --build-arg "SANDBOX_GID=${gid}" \
+    -t "$image" \
+    "$PROJECT_DIR"
+  printf 'built sandbox image: %s\n' "$image"
 }
 
 cmd_start() {
@@ -520,6 +535,7 @@ case "$COMMAND" in
   create) cmd_create "$@" ;;
   install) cmd_install "$@" ;;
   configure-openclaw) cmd_configure_openclaw "$@" ;;
+  sandbox-image) cmd_sandbox_image "$@" ;;
   up) cmd_up "$@" ;;
   start) cmd_start "$@" ;;
   stop) cmd_stop "$@" ;;

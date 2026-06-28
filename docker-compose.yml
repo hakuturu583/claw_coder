@@ -24,6 +24,8 @@ services:
       NEMOCLAW_MAX_MODEL_LEN: ${NEMOCLAW_MAX_MODEL_LEN:-}
       NEMOCLAW_COMPACTION_RESERVE_TOKENS_FLOOR: ${NEMOCLAW_COMPACTION_RESERVE_TOKENS_FLOOR:-}
       NEMOCLAW_OPENCLAW_MAX_TOKENS: ${NEMOCLAW_OPENCLAW_MAX_TOKENS:-}
+      NEMOCLAW_SANDBOX_IMAGE: ${NEMOCLAW_SANDBOX_IMAGE:-openclaw-sandbox-common:bookworm-slim}
+      NEMOCLAW_SANDBOX_CONTAINER_PREFIX: ${NEMOCLAW_SANDBOX_CONTAINER_PREFIX:-claw-coder-sandbox}
       BRAVE_API_KEY: ${BRAVE_API_KEY:-}
       BRAVE_SEARCH_API_KEY: ${BRAVE_SEARCH_API_KEY:-}
       SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
@@ -35,6 +37,7 @@ services:
       - nemoclaw-home:/home/nemoclaw
       - ./.claw_coder/logs:/home/nemoclaw/.claw_coder/logs
       - nemoclaw-skills:/home/nemoclaw/.openclaw/skills
+      - ./openclaw/skills:/home/nemoclaw/.openclaw/skills-extra:ro
       - ./openclaw/skills:/opt/nemoclaw/skills:ro
       - nemoclaw-data:/opt/nemoclaw
       - ./config/model-settings.yaml:/opt/nemoclaw/model-settings.yaml:ro
