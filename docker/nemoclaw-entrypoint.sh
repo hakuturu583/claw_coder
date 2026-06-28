@@ -35,7 +35,7 @@ if [ -d /home/nemoclaw ]; then
     /home/nemoclaw/.openclaw/workspace || true
   chown -R nemoclaw:nemoclaw /home/nemoclaw/.npm /home/nemoclaw/.claw_coder 2>/dev/null || true
   find /home/nemoclaw/.openclaw \
-    -path /home/nemoclaw/.openclaw/workspace -prune -o \
+    -path /home/nemoclaw/.openclaw/workspace/AGENTS.md -prune -o \
     -exec chown nemoclaw:nemoclaw {} + 2>/dev/null || true
 fi
 
