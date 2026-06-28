@@ -119,6 +119,7 @@ cat >/home/nemoclaw/.openclaw/openclaw.json <<EOF
     slack: {
       enabled: true,
       mode: "socket",
+      replyToMode: "first",
       botToken: { source: "env", provider: "default", id: "SLACK_BOT_TOKEN" },
       appToken: { source: "env", provider: "default", id: "SLACK_APP_TOKEN" },
       groupPolicy: "allowlist",

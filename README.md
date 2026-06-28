@@ -158,6 +158,7 @@ session.store = /home/nemoclaw/.claw_coder/logs/sessions/sessions.json
 
 The gateway reads its Slack credentials and Brave Search key from the container environment. The control container waits for inference to answer `/v1/models`, writes the config, and then starts `openclaw gateway` as the `nemoclaw` user.
 The Brave plugin backs web search, and the Workboard plugin is enabled so OpenClaw Kanban-style task tracking is available inside OpenClaw. Plugin-owned tools are added through the main tool profile without removing the built-in coding tools.
+Slack replies are configured with `replyToMode: "first"`, so the first response to a mention should land in a thread under the triggering message.
 Automatic compaction keeps the configured reserve floor so long sessions have enough headroom to continue after summary recovery.
 
 ## Tuning
