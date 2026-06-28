@@ -1,4 +1,23 @@
 services:
+  skill-hub:
+    build:
+      context: .
+      dockerfile: docker/skill-hub.Dockerfile
+    image: nemoclaw:skill-hub
+    pull_policy: build
+    restart: "no"
+    network_mode: none
+    command:
+      - /bin/sh
+      - -lc
+      - |
+        set -eu
+        mkdir -p /skill-hub
+        find /skill-hub -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+        cp -a /image-skill-hub/. /skill-hub/
+    volumes:
+      - skill-hub-data:/skill-hub
+
   nemoclaw:
     build:
       context: .
@@ -10,12 +29,19 @@ services:
     restart: unless-stopped
     entrypoint: ["/usr/bin/tini", "-s", "--", "/usr/local/bin/nemoclaw-entrypoint.sh"]
     working_dir: /home/nemoclaw/.openclaw/workspace
+    depends_on:
+      skill-hub:
+        condition: service_completed_successfully
+      embeddings:
+        condition: service_started
     environment:
       HOME: /home/nemoclaw
       USER: nemoclaw
       LOGNAME: nemoclaw
       NEMOCLAW_CHARACTER_NAME: ${NEMOCLAW_CHARACTER_NAME:-Clawくん}
       NEMOCLAW_API_PORT: ${NEMOCLAW_API_PORT:-8000}
+      NEMOCLAW_EMBEDDING_MODEL: ${NEMOCLAW_EMBEDDING_MODEL:-mradermacher/sarashina-embedding-v2-1b-GGUF:Q4_K_M}
+      NEMOCLAW_EMBEDDING_API_PORT: ${NEMOCLAW_EMBEDDING_API_PORT:-8010}
       BRAVE_API_KEY: ${BRAVE_API_KEY:-}
       BRAVE_SEARCH_API_KEY: ${BRAVE_SEARCH_API_KEY:-}
       SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
@@ -26,6 +52,7 @@ services:
     volumes:
       - nemoclaw-home:/home/nemoclaw
       - nemoclaw-skills:/home/nemoclaw/.openclaw/skills
+      - skill-hub-data:/opt/nemoclaw/skill-hub:ro
       - nemoclaw-data:/opt/nemoclaw
       - ./openclaw/AGENTS.md:/home/nemoclaw/.openclaw/workspace/AGENTS.md:ro
       - ./openclaw/AGENTS.md:/workspace/repositories/AGENTS.md:ro
@@ -56,6 +83,49 @@ services:
       - nemoclaw-models:/var/lib/nemoclaw/models
       - nemoclaw-hf-cache:/var/lib/nemoclaw/huggingface
 
+  embedding-model-init:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BASE_IMAGE: ${NEMOCLAW_IMAGE:-ubuntu:24.04}
+    image: nemoclaw:local
+    pull_policy: build
+    restart: "no"
+    entrypoint: ["/usr/bin/tini", "-s", "--", "/usr/local/bin/install-nemoclaw-embeddings.sh"]
+    environment:
+      NEMOCLAW_EMBEDDING_MODEL: ${NEMOCLAW_EMBEDDING_MODEL:-mradermacher/sarashina-embedding-v2-1b-GGUF:Q4_K_M}
+      NEMOCLAW_EMBEDDING_GGUF_FILE: ${NEMOCLAW_EMBEDDING_GGUF_FILE:-}
+      NEMOCLAW_EMBEDDING_API_HOST: ${NEMOCLAW_EMBEDDING_API_HOST:-0.0.0.0}
+      NEMOCLAW_EMBEDDING_API_PORT: ${NEMOCLAW_EMBEDDING_API_PORT:-8010}
+      NEMOCLAW_EMBEDDING_MAX_MODEL_LEN: ${NEMOCLAW_EMBEDDING_MAX_MODEL_LEN:-8192}
+      NEMOCLAW_EMBEDDING_LLAMA_N_GPU_LAYERS: ${NEMOCLAW_EMBEDDING_LLAMA_N_GPU_LAYERS:-999}
+    volumes:
+      - nemoclaw-data:/opt/nemoclaw
+      - nemoclaw-models:/var/lib/nemoclaw/models
+      - nemoclaw-hf-cache:/var/lib/nemoclaw/huggingface
+
+  embeddings:
+    image: ${NEMOCLAW_LLAMA_IMAGE:-ghcr.io/ggml-org/llama.cpp:server-cuda12}
+    pull_policy: missing
+    restart: unless-stopped
+    gpus: all
+    entrypoint: ["/bin/sh", "/usr/local/bin/llama-embeddings-entrypoint.sh"]
+    depends_on:
+      embedding-model-init:
+        condition: service_completed_successfully
+    environment:
+      NEMOCLAW_EMBEDDING_MODEL: ${NEMOCLAW_EMBEDDING_MODEL:-mradermacher/sarashina-embedding-v2-1b-GGUF:Q4_K_M}
+      NEMOCLAW_EMBEDDING_API_HOST: ${NEMOCLAW_EMBEDDING_API_HOST:-0.0.0.0}
+      NEMOCLAW_EMBEDDING_API_PORT: ${NEMOCLAW_EMBEDDING_API_PORT:-8010}
+      NEMOCLAW_EMBEDDING_MAX_MODEL_LEN: ${NEMOCLAW_EMBEDDING_MAX_MODEL_LEN:-8192}
+      NEMOCLAW_EMBEDDING_LLAMA_N_GPU_LAYERS: ${NEMOCLAW_EMBEDDING_LLAMA_N_GPU_LAYERS:-999}
+    volumes:
+      - nemoclaw-data:/opt/nemoclaw
+      - nemoclaw-models:/var/lib/nemoclaw/models
+      - nemoclaw-hf-cache:/var/lib/nemoclaw/huggingface
+      - ./docker/llama-embeddings-entrypoint.sh:/usr/local/bin/llama-embeddings-entrypoint.sh:ro
+
   inference:
     image: ${NEMOCLAW_LLAMA_IMAGE:-ghcr.io/ggml-org/llama.cpp:server-cuda12}
     pull_policy: missing
@@ -76,6 +146,7 @@ services:
       - ./docker/llama-server-entrypoint.sh:/usr/local/bin/llama-server-entrypoint.sh:ro
 
 volumes:
+  skill-hub-data:
   nemoclaw-home:
   nemoclaw-skills:
   nemoclaw-data:

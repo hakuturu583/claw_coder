@@ -25,6 +25,10 @@ instructions are available yet.
 ## State Layout
 
 - `/home/nemoclaw/.openclaw/skills` for persistent OpenClaw skills.
+- `/home/nemoclaw/.openclaw/workspace/skills` for workspace-local overrides.
+- `/opt/nemoclaw/skill-hub` for the shared Skill Hub volume populated from the
+  dedicated `skill-hub` image.
+- `/home/nemoclaw/.openclaw/memory/lancedb` for persistent memory lookup data.
 - `/home/nemoclaw/.openclaw/openclaw.json` for gateway and tool policy.
 - `/home/nemoclaw/.openclaw/workspace` for the OpenClaw agent workspace and
   default AGENTS instructions.

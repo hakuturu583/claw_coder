@@ -15,7 +15,10 @@ if [ -d /home/nemoclaw ]; then
     /home/nemoclaw \
     /home/nemoclaw/.openclaw \
     /home/nemoclaw/.openclaw/skills \
-    /home/nemoclaw/.openclaw/workspace || true
+    /home/nemoclaw/.openclaw/workspace \
+    /home/nemoclaw/.openclaw/workspace/skills \
+    /home/nemoclaw/.openclaw/memory \
+    /home/nemoclaw/.openclaw/memory/lancedb || true
 fi
 
 if [ ! -x /opt/openclaw/bin/openclaw ]; then
@@ -30,6 +33,7 @@ export TMPDIR=/tmp/openclaw-1001
 
 gosu nemoclaw:nemoclaw env HOME=/home/nemoclaw TMPDIR=/tmp/openclaw-1001 openclaw plugins install --force @openclaw/slack
 gosu nemoclaw:nemoclaw env HOME=/home/nemoclaw TMPDIR=/tmp/openclaw-1001 openclaw plugins install --force @openclaw/brave-plugin
+gosu nemoclaw:nemoclaw env HOME=/home/nemoclaw TMPDIR=/tmp/openclaw-1001 openclaw plugins install --force @openclaw/memory-lancedb
 
 for _ in $(seq 1 900); do
   if curl -fsS "http://inference:${NEMOCLAW_API_PORT:-8000}/v1/models" >/dev/null 2>&1; then
@@ -40,6 +44,18 @@ done
 
 if ! curl -fsS "http://inference:${NEMOCLAW_API_PORT:-8000}/v1/models" >/dev/null 2>&1; then
   echo "error: inference did not become ready at http://inference:${NEMOCLAW_API_PORT:-8000}/v1/models" >&2
+  exit 1
+fi
+
+for _ in $(seq 1 300); do
+  if curl -fsS "http://embeddings:${NEMOCLAW_EMBEDDING_API_PORT:-8010}/v1/models" >/dev/null 2>&1; then
+    break
+  fi
+  sleep 2
+done
+
+if ! curl -fsS "http://embeddings:${NEMOCLAW_EMBEDDING_API_PORT:-8010}/v1/models" >/dev/null 2>&1; then
+  echo "error: embeddings did not become ready at http://embeddings:${NEMOCLAW_EMBEDDING_API_PORT:-8010}/v1/models" >&2
   exit 1
 fi
 

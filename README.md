@@ -1,6 +1,6 @@
 # nemoclaw
 
-`nemoclaw` builds a Docker Compose based local inference runtime for NemoClaw/OpenClaw-style coding agents. It splits the control plane and the model server into separate containers: `nemoclaw` runs the OpenClaw gateway and keeps the persistent OpenClaw state, and `inference` runs a prebuilt `llama.cpp` server image against `deepreinforce-ai/Ornith-1.0-35B-GGUF` as a local OpenAI-compatible endpoint. The server starts with `--jinja`, which is the `llama.cpp` side required for tool/function-call style prompts. The default character name is `Clawくん`.
+`nemoclaw` builds a Docker Compose based local inference runtime for NemoClaw/OpenClaw-style coding agents. It splits the control plane and the model server into separate containers: `nemoclaw` runs the OpenClaw gateway and keeps the persistent OpenClaw state, `inference` runs a prebuilt `llama.cpp` server image against `deepreinforce-ai/Ornith-1.0-35B-GGUF` as a local OpenAI-compatible endpoint, and `embeddings` runs the same `llama.cpp` image against a Sarashina embedding model for memory lookup. The chat server starts with `--jinja`, which is the `llama.cpp` side required for tool/function-call style prompts. The default character name is `Clawくん`.
 
 The runtime keeps container state in named volumes:
 
@@ -9,12 +9,16 @@ The runtime keeps container state in named volumes:
 - `/home/nemoclaw/.openclaw/openclaw.json` for the gateway config
 - `/home/nemoclaw/.openclaw/workspace` for OpenClaw's default workspace and
   default AGENTS instructions
+- `/home/nemoclaw/.openclaw/workspace/skills` for workspace-local skill overrides
+- `/home/nemoclaw/.openclaw/memory/lancedb` for the OpenClaw memory store
 - `/var/lib/nemoclaw/models` for Hugging Face model files
 - `/var/lib/nemoclaw/huggingface` for the Hugging Face cache
 
 The `nemoclaw` control container runs as the `nemoclaw` user at runtime. That keeps shell state and skill data separate from root while still letting the bootstrap/install steps run as root.
 
 The OpenClaw agent workspace lives in `/home/nemoclaw/.openclaw/workspace`. The default OpenClaw agent instructions are mounted there from `openclaw/AGENTS.md`. For compatibility with the current OpenClaw resolver, the same default instructions are also mounted at `/workspace/repositories/AGENTS.md`. The `repositories/` directory is bind-mounted into the `nemoclaw` control container at `/workspace/repositories`, and the image includes `gh` so you can run GitHub CLI commands from inside that container against any checkout under that directory.
+
+The shared Skill Hub is built as its own Docker image, copied into the `skill-hub-data` volume, and mounted at `/opt/nemoclaw/skill-hub`. OpenClaw loads it through `skills.load.extraDirs` as a lower-precedence source than the persistent skills directories. That keeps curated defaults separate from user-scoped overrides in `/home/nemoclaw/.openclaw/skills` or `/home/nemoclaw/.openclaw/workspace/skills`.
 
 If you want `gh` to work without running `gh auth login` inside the container, set `GH_TOKEN` or `GITHUB_TOKEN` in `.env` or the host environment. The control container forwards those variables and stores `gh` state under `/home/nemoclaw`.
 
@@ -25,11 +29,17 @@ If a local `.env` file exists next to the command you run, it is sourced before 
 ## What It Creates
 
 - Docker Compose project: `nemoclaw-vllm`
+- Skill Hub init container: `skill-hub`
 - Control container: `nemoclaw`
 - Inference container: `inference`
+- Embedding model-init container: `embedding-model-init`
+- Embeddings container: `embeddings`
 - Persistent user home for NemoClaw/OpenClaw: `/home/nemoclaw`
 - Persistent OpenClaw skill directory: `/home/nemoclaw/.openclaw/skills`
+- Workspace-local OpenClaw skill directory: `/home/nemoclaw/.openclaw/workspace/skills`
+- Shared Skill Hub volume: `skill-hub-data`
 - Persistent OpenClaw gateway config: `/home/nemoclaw/.openclaw/openclaw.json`
+- Persistent OpenClaw memory store: `/home/nemoclaw/.openclaw/memory/lancedb`
 - Persistent Hugging Face model directory: `/var/lib/nemoclaw/models`
 - Persistent Hugging Face cache: `/var/lib/nemoclaw/huggingface`
 - Optional host-local proxy port: `--host-port`
@@ -122,6 +132,8 @@ bin/setup_nemoclaw.bash destroy
 
 `shell` opens a shell in the persistent `nemoclaw` control container. That is where OpenClaw skill data and other per-user state should live. OpenClaw skills are stored under `/home/nemoclaw/.openclaw/skills`, and the OpenClaw workspace plus default AGENTS instructions live under `/home/nemoclaw/.openclaw/workspace`.
 
+The shared Skill Hub is managed by its own Compose service and synced into `skill-hub-data` before the control container starts. It runs with no network access, is mounted at `/opt/nemoclaw/skill-hub`, and stays separate from the user-owned skill directories by design.
+
 From that shell, you can work directly in `/workspace/repositories` and use `git` or `gh` against the mounted checkouts. OpenClaw's own workspace/bootstrap files live under `/home/nemoclaw/.openclaw/workspace`, and the default `AGENTS.md` is mounted there from `openclaw/AGENTS.md`. A compatibility mount also places the same file at `/workspace/repositories/AGENTS.md`, so repository checkouts stay separate from agent state while the current resolver still finds the default instructions.
 
 For noninteractive GitHub access, set `GH_TOKEN` or `GITHUB_TOKEN` in `.env` before starting the container.
@@ -137,7 +149,13 @@ tools.alsoAllow = ["group:plugins"]
 tools.sandbox.tools.alsoAllow = ["group:plugins"]
 tools.web.search.provider = brave
 tools.web.search.maxResults = 5
+tools.toolSearch = true
 plugins.entries.brave.enabled = true
+plugins.slots.memory = "memory-lancedb"
+plugins.entries.memory-lancedb.enabled = true
+plugins.entries.memory-lancedb.config.dbPath = /home/nemoclaw/.openclaw/memory/lancedb
+plugins.entries.memory-lancedb.config.embedding.baseUrl = http://embeddings:8010/v1
+plugins.entries.memory-lancedb.config.embedding.model = mradermacher/sarashina-embedding-v2-1b-GGUF:Q4_K_M
 plugins.entries.workboard.enabled = true
 agents.defaults.workspace = /home/nemoclaw/.openclaw/workspace
 agents.defaults.compaction.reserveTokensFloor = 20000
@@ -152,7 +170,7 @@ channels.slack.channels.<id>.requireMention = false
 ```
 
 The gateway reads its Slack credentials and Brave Search key from the container environment. The control container waits for inference to answer `/v1/models`, writes the config, and then starts `openclaw gateway` as the `nemoclaw` user.
-The Brave plugin backs web search, and the Workboard plugin is enabled so OpenClaw Kanban-style task tracking is available inside OpenClaw. Plugin-owned tools are added through the main tool profile without removing the built-in coding tools.
+The Brave plugin backs web search, the Workboard plugin is enabled so OpenClaw Kanban-style task tracking is available inside OpenClaw, and `memory-lancedb` is enabled with a Sarashina embedding endpoint served by a dedicated `llama.cpp` container. Tool Search is also enabled so the gateway can discover tools without inflating the active context with unnecessary tool definitions. Plugin-owned tools are added through the main tool profile without removing the built-in coding tools.
 Automatic compaction keeps a 20000-token reserve floor so long sessions have enough headroom to continue after summary recovery.
 
 ## Tuning
@@ -206,6 +224,8 @@ bin/setup_nemoclaw.bash --n-gpu-layers 999 up
 The `model-init` service resolves the GGUF file from the `repo_id:quant` form through Hugging Face Hub, and the inference container starts `llama-server` with the resulting local file path. The Hugging Face download cache and the local model directory are both backed by named Docker volumes, so downloads survive container recreation.
 
 The persistent `nemoclaw` user is there so OpenClaw skill data and other per-user state can live across container rebuilds. OpenClaw skill data survives via the `/home/nemoclaw/.openclaw/skills` volume, and the gateway config survives via `/home/nemoclaw/.openclaw/openclaw.json`.
+
+The baked-in Skill Hub is separate from the persistent skill volume by design. That lets you keep curated default skills in a dedicated Compose-managed image while still letting operators add or override skills in the persistent or workspace-local directories.
 
 The control container can also be used for GitHub operations because the repository is mounted in-place and `gh` is installed in the image.
 

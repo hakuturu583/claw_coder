@@ -16,7 +16,7 @@ else
   exit 1
 fi
 
-install -d -o nemoclaw -g nemoclaw -m 0700 /home/nemoclaw/.openclaw /home/nemoclaw/.openclaw/workspace
+install -d -o nemoclaw -g nemoclaw -m 0700 /home/nemoclaw/.openclaw /home/nemoclaw/.openclaw/workspace /home/nemoclaw/.openclaw/memory /home/nemoclaw/.openclaw/memory/lancedb
 cat >/home/nemoclaw/.openclaw/openclaw.json <<EOF
 {
   gateway: {
@@ -31,6 +31,7 @@ cat >/home/nemoclaw/.openclaw/openclaw.json <<EOF
         alsoAllow: ["group:plugins"],
       },
     },
+    toolSearch: true,
     web: {
       search: {
         provider: "brave",
@@ -39,7 +40,15 @@ cat >/home/nemoclaw/.openclaw/openclaw.json <<EOF
       },
     },
   },
+  skills: {
+    load: {
+      extraDirs: ["/opt/nemoclaw/skill-hub"],
+    },
+  },
   plugins: {
+    slots: {
+      memory: "memory-lancedb",
+    },
     entries: {
       brave: {
         enabled: true,
@@ -47,6 +56,23 @@ cat >/home/nemoclaw/.openclaw/openclaw.json <<EOF
           webSearch: {
             apiKey: { source: "env", provider: "default", id: "${brave_secret_env}" },
           },
+        },
+      },
+      "memory-lancedb": {
+        enabled: true,
+        config: {
+          dbPath: "/home/nemoclaw/.openclaw/memory/lancedb",
+          embedding: {
+            provider: "openai",
+            baseUrl: "http://embeddings:${NEMOCLAW_EMBEDDING_API_PORT:-8010}/v1",
+            apiKey: "nemoclaw-local",
+            model: "${NEMOCLAW_EMBEDDING_MODEL:-mradermacher/sarashina-embedding-v2-1b-GGUF:Q4_K_M}",
+            dimensions: 1792,
+          },
+          recallMaxChars: 400,
+          captureMaxChars: 500,
+          autoRecall: true,
+          autoCapture: false,
         },
       },
       workboard: {
