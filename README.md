@@ -1,6 +1,6 @@
 # nemoclaw
 
-`nemoclaw` builds a Docker Compose based local inference runtime for NemoClaw/OpenClaw-style coding agents. It splits the control plane and the model server into separate containers: `nemoclaw` runs the OpenClaw gateway and keeps the persistent OpenClaw state, and `inference` runs `deepreinforce-ai/Ornith-1.0-35B-GGUF` through llama.cpp as a local OpenAI-compatible endpoint. The default character name is `Clawくん`.
+`nemoclaw` builds a Docker Compose based local inference runtime for NemoClaw/OpenClaw-style coding agents. It splits the control plane and the model server into separate containers: `nemoclaw` runs the OpenClaw gateway and keeps the persistent OpenClaw state, and `inference` runs a prebuilt `llama.cpp` server image against `deepreinforce-ai/Ornith-1.0-35B-GGUF` as a local OpenAI-compatible endpoint. The default character name is `Clawくん`.
 
 The runtime keeps container state in named volumes:
 
@@ -47,7 +47,7 @@ endpoint:  http://127.0.0.1:8000/v1
 - Docker Engine with the Compose v2 plugin
 - Enough RAM/VRAM for the selected GGUF quant
 - NVIDIA Container Toolkit if GPU inference is required
-- NVIDIA driver exposing CUDA 13.0 or newer for the default llama.cpp `cu130` CUDA build
+- NVIDIA driver exposing CUDA 13.0 or newer for the default `llama.cpp` CUDA server image
 - Network access from the container for apt, pip, Hugging Face, and model downloads
 
 Check the host:
@@ -70,7 +70,7 @@ If you want a smaller model for low-VRAM testing, run:
 bin/setup_nemoclaw.bash --ornith-size 9b up
 ```
 
-You can also run `docker compose up` directly. On the first start, the inference container will build `llama-server` automatically before serving requests, and the control container will wait for inference, write `~/.openclaw/openclaw.json`, and start `openclaw gateway`.
+You can also run `docker compose up` directly. On the first start, a lightweight model-init service will download the GGUF file into the persistent model volume, the inference container will start the prebuilt `llama.cpp` server image, and the control container will wait for inference, write `~/.openclaw/openclaw.json`, and start `openclaw gateway`.
 
 For a gated/private download:
 
@@ -174,10 +174,10 @@ Disable GPU attachment:
 bin/setup_nemoclaw.bash --gpu-id none up
 ```
 
-Install a pinned llama.cpp release tag:
+Override the llama.cpp server image:
 
 ```bash
-bin/setup_nemoclaw.bash --llama-cpp-tag b9803 up
+NEMOCLAW_LLAMA_IMAGE=ghcr.io/ggml-org/llama.cpp:server-cuda13 bin/setup_nemoclaw.bash up
 ```
 
 Choose the smaller Ornith model preset:
@@ -186,13 +186,7 @@ Choose the smaller Ornith model preset:
 bin/setup_nemoclaw.bash --ornith-size 9b up
 ```
 
-Choose the llama.cpp CUDA build variant:
-
-```bash
-bin/setup_nemoclaw.bash --cuda-variant cu130 up
-```
-
-The default builds llama.cpp `b9803` with CUDA 13.0 support, which expects hosts whose `nvidia-smi` reports `CUDA Version: 13.0` or newer. Use `--cuda-variant cpu` to build without CUDA offload.
+The default inference backend is the prebuilt `llama.cpp` CUDA server image. Override `NEMOCLAW_LLAMA_IMAGE` if you need a different `llama.cpp` server tag, such as a CPU-only image.
 
 Tune GPU offload:
 
@@ -202,7 +196,7 @@ bin/setup_nemoclaw.bash --n-gpu-layers 999 up
 
 ## Notes
 
-The tool resolves the GGUF file from the `repo_id:quant` form through Hugging Face Hub, then starts `llama-server` with the local file path. The Hugging Face download cache and the local model directory are both backed by named Docker volumes, so downloads survive container recreation.
+The `model-init` service resolves the GGUF file from the `repo_id:quant` form through Hugging Face Hub, and the inference container starts `llama-server` with the resulting local file path. The Hugging Face download cache and the local model directory are both backed by named Docker volumes, so downloads survive container recreation.
 
 The persistent `nemoclaw` user is there so OpenClaw skill data and other per-user state can live across container rebuilds. OpenClaw skill data survives via the `/home/nemoclaw/.openclaw/skills` volume, and the gateway config survives via `/home/nemoclaw/.openclaw/openclaw.json`.
 

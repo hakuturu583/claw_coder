@@ -20,7 +20,15 @@ if [ ! -x /opt/openclaw/bin/openclaw ]; then
   exit 1
 fi
 
-/usr/local/bin/install-openclaw-config.sh
+gosu nemoclaw:nemoclaw /usr/local/bin/install-openclaw-config.sh
+
+install -d -o nemoclaw -g nemoclaw -m 0700 /tmp/openclaw-1001 || true
+export TMPDIR=/tmp/openclaw-1001
+
+gosu nemoclaw:nemoclaw env HOME=/home/nemoclaw TMPDIR=/tmp/openclaw-1001 openclaw plugins install --force @openclaw/slack
+gosu nemoclaw:nemoclaw env HOME=/home/nemoclaw TMPDIR=/tmp/openclaw-1001 openclaw plugins install --force @openclaw/brave-plugin
+
+chown -R nemoclaw:nemoclaw /home/nemoclaw/.openclaw || true
 
 for _ in $(seq 1 900); do
   if curl -fsS "http://inference:${NEMOCLAW_API_PORT:-8000}/v1/models" >/dev/null 2>&1; then
@@ -34,4 +42,4 @@ if ! curl -fsS "http://inference:${NEMOCLAW_API_PORT:-8000}/v1/models" >/dev/nul
   exit 1
 fi
 
-exec gosu nemoclaw:nemoclaw openclaw gateway
+exec gosu nemoclaw:nemoclaw env HOME=/home/nemoclaw TMPDIR=/tmp/openclaw-1001 openclaw gateway

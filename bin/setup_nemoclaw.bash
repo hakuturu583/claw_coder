@@ -7,6 +7,7 @@ PROJECT_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 COMPOSE_FILE="${PROJECT_DIR}/docker-compose.yml"
 CONTROL_SERVICE="${NEMOCLAW_SERVICE_NAME:-nemoclaw}"
 INFERENCE_SERVICE="${NEMOCLAW_INFERENCE_SERVICE_NAME:-inference}"
+MODEL_INIT_SERVICE="${NEMOCLAW_MODEL_INIT_SERVICE_NAME:-model-init}"
 
 load_env_file() {
   local file="${1:-}"
@@ -81,8 +82,8 @@ Global options:
   --gpu-id ID            Docker GPU request: all, auto, none, or device ids (default: $GPU_ID)
   --tp-size N            Deprecated compatibility option (default: $TP_SIZE)
   --max-model-len N      llama.cpp context size (default: $MAX_MODEL_LEN)
-  --cuda-variant NAME    CUDA toolkit variant for llama.cpp build: cu130, cpu (default: $CUDA_VARIANT)
-  --llama-cpp-tag TAG    llama.cpp release tag or git ref (default: $LLAMA_CPP_TAG)
+  --cuda-variant NAME    Legacy compatibility option retained for older configs (default: $CUDA_VARIANT)
+  --llama-cpp-tag TAG    Legacy compatibility option retained for older configs (default: $LLAMA_CPP_TAG)
   --n-gpu-layers N       llama.cpp GPU offload layers (default: $LLAMA_N_GPU_LAYERS)
   --pass-hf-token        Pass only HF_TOKEN/HUGGING_FACE_HUB_TOKEN into setup
   -h, --help             Show help
@@ -91,7 +92,7 @@ Commands:
   init-host              Compose/Docker do not need host initialization
   doctor                 Check host-side requirements
   create                 Create the Compose project and both service containers
-  install                Install/build llama.cpp and inference config
+  install                Prepare the model cache and inference config
   configure-openclaw     Write the OpenClaw gateway config for the control container
   up                     create + install + start
   start                  Start the Compose service
@@ -278,7 +279,7 @@ cmd_install() {
 
   compose run --rm --no-deps --build "${env_args[@]}" \
     --entrypoint /usr/local/bin/install-nemoclaw-inference.sh \
-    "$INFERENCE_SERVICE"
+    "$MODEL_INIT_SERVICE"
 
   printf 'installed isolated llama.cpp runtime in %s\n' "$INSTANCE"
 }
@@ -401,7 +402,6 @@ cmd_destroy() {
 
 cmd_up() {
   cmd_create
-  cmd_install
   cmd_start
   wait_for_runtime
 }
