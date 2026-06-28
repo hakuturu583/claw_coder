@@ -183,7 +183,7 @@ Skill Workshop is enabled as the governed path for workspace skills, with pendin
 Custom OpenClaw skills can live in `openclaw/skills/` in this repo; the control container mounts that directory read-only and loads it through `skills.load.extraDirs`.
 Slack replies are configured with `replyToMode: "first"`, so the first response to a mention should land in a thread under the triggering message.
 Slack file upload is available through the built-in `upload-file` action, and `channels.slack.mediaMaxMb` caps per-file inbound media handling at 20 MB.
-The default agent skill list now includes `slack-file-upload` and `sandbox-docker`, and `bin/setup_nemoclaw.bash sandbox-image` builds the Docker sandbox image used by session sandboxes.
+The default agent skill list now includes `slack-file-upload` and `sandbox-docker`, and `bin/setup_nemoclaw.bash sandbox-image` builds the Docker sandbox image used by session sandboxes. When OpenClaw needs to refresh that image from chat, the `sandbox-docker` skill routes the helper through the built-in `exec` tool on `host=gateway`.
 Automatic compaction keeps the configured reserve floor so long sessions have enough headroom to continue after summary recovery.
 
 ## Tuning
@@ -240,7 +240,7 @@ The `model-init` service resolves the GGUF file from the `repo_id:quant` form th
 The persistent `nemoclaw` user is there so OpenClaw skill data and other per-user state can live across container rebuilds. OpenClaw skill data survives via the `/home/nemoclaw/.openclaw/skills` volume, and the gateway config survives via `/home/nemoclaw/.openclaw/openclaw.json`.
 
 The control container can also be used for GitHub operations because the repository is mounted in-place and `gh` is installed in the image.
-Session sandboxes are configured to be Docker-backed, per-session, and workspace-readable. When a sandbox image changes, rebuild it with `bin/setup_nemoclaw.bash sandbox-image` and then recreate the affected session with `openclaw sandbox recreate --session <sessionKey>`.
+Session sandboxes are configured to be Docker-backed, per-session, and workspace-readable. When a sandbox image changes, rebuild it with `bin/setup_nemoclaw.bash sandbox-image` and then recreate the affected session with `openclaw sandbox recreate --session <sessionKey>`. From an OpenClaw turn, use `exec` with `host=gateway` to run the rebuild helper on the control host.
 
 Sources used while choosing defaults:
 

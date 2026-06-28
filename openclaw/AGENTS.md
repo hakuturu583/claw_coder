@@ -61,5 +61,6 @@ instructions are available yet.
 
 - Assume session sandboxes are Docker-backed and disposable.
 - Use `bin/setup_nemoclaw.bash sandbox-image` to refresh the reusable sandbox image when the environment needs extra packages.
+- When the build has to happen from an OpenClaw turn, call that helper with the built-in `exec` tool on `host=gateway`.
 - Use `openclaw sandbox recreate --session <sessionKey>` after sandbox image or sandbox config changes.
 - Prefer sandbox changes that are cache-friendly and repeatable over ad hoc package installs in long-lived sessions.
