@@ -76,6 +76,9 @@ cat >/home/nemoclaw/.openclaw/openclaw.json <<EOF
     },
   },
   skills: {
+    load: {
+      extraDirs: ["/home/nemoclaw/.openclaw/skills-extra"],
+    },
     workshop: {
       autonomous: {
         enabled: false,
@@ -97,9 +100,27 @@ cat >/home/nemoclaw/.openclaw/openclaw.json <<EOF
       compaction: {
         reserveTokensFloor: ${NEMOCLAW_COMPACTION_RESERVE_TOKENS_FLOOR:-20000},
       },
+      sandbox: {
+        mode: "all",
+        backend: "docker",
+        scope: "session",
+        workspaceAccess: "rw",
+        sessionToolsVisibility: "spawned",
+        workspaceRoot: "/home/nemoclaw/.openclaw/sandboxes",
+        docker: {
+          image: "${NEMOCLAW_SANDBOX_IMAGE:-openclaw-sandbox-common:bookworm-slim}",
+          containerPrefix: "${NEMOCLAW_SANDBOX_CONTAINER_PREFIX:-claw-coder-sandbox}",
+          workdir: "/workspace",
+          readOnlyRoot: true,
+          tmpfs: ["/tmp:rw,nosuid,nodev,size=1g"],
+          network: "none",
+          user: "${NEMOCLAW_UID:-1000}:${NEMOCLAW_GID:-1000}",
+        },
+      },
       model: {
         primary: "local/nemoclaw-local",
       },
+      skills: ["slack-file-upload", "sandbox-docker"],
       models: {
         "local/nemoclaw-local": {
           alias: "${NEMOCLAW_CHARACTER_NAME:-Clawくん}",

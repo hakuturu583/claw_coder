@@ -142,6 +142,18 @@ tools.alsoAllow = ["group:plugins"]
 tools.toolSearch.enabled = true
 tools.toolSearch.mode = tools
 tools.sandbox.tools.alsoAllow = ["group:plugins"]
+agents.defaults.sandbox.mode = all
+agents.defaults.sandbox.backend = docker
+agents.defaults.sandbox.scope = session
+agents.defaults.sandbox.workspaceAccess = rw
+agents.defaults.sandbox.sessionToolsVisibility = spawned
+agents.defaults.sandbox.docker.image = openclaw-sandbox-common:bookworm-slim
+agents.defaults.sandbox.docker.containerPrefix = claw-coder-sandbox
+agents.defaults.sandbox.docker.workdir = /workspace
+agents.defaults.sandbox.docker.readOnlyRoot = true
+agents.defaults.sandbox.docker.tmpfs = ["/tmp:rw,nosuid,nodev,size=1g"]
+agents.defaults.sandbox.docker.network = none
+agents.defaults.sandbox.docker.user = ${NEMOCLAW_UID}:${NEMOCLAW_GID}
 tools.web.search.provider = brave
 tools.web.search.maxResults = 5
 plugins.entries.brave.enabled = true
@@ -170,6 +182,7 @@ The Brave plugin backs web search, and the Workboard plugin is enabled so OpenCl
 Skill Workshop is enabled as the governed path for workspace skills, with pending approval for agent-initiated apply/reject/quarantine and no autonomous proposal drafting.
 Slack replies are configured with `replyToMode: "first"`, so the first response to a mention should land in a thread under the triggering message.
 Slack file upload is available through the built-in `upload-file` action, and `channels.slack.mediaMaxMb` caps per-file inbound media handling at 20 MB.
+The default agent skill list now includes `slack-file-upload` and `sandbox-docker`, and `bin/setup_nemoclaw.bash sandbox-image` builds the Docker sandbox image used by session sandboxes.
 Automatic compaction keeps the configured reserve floor so long sessions have enough headroom to continue after summary recovery.
 
 ## Tuning
@@ -226,6 +239,7 @@ The `model-init` service resolves the GGUF file from the `repo_id:quant` form th
 The persistent `nemoclaw` user is there so OpenClaw skill data and other per-user state can live across container rebuilds. OpenClaw skill data survives via the `/home/nemoclaw/.openclaw/skills` volume, and the gateway config survives via `/home/nemoclaw/.openclaw/openclaw.json`.
 
 The control container can also be used for GitHub operations because the repository is mounted in-place and `gh` is installed in the image.
+Session sandboxes are configured to be Docker-backed, per-session, and workspace-readable. When a sandbox image changes, rebuild it with `bin/setup_nemoclaw.bash sandbox-image` and then recreate the affected session with `openclaw sandbox recreate --session <sessionKey>`.
 
 Sources used while choosing defaults:
 

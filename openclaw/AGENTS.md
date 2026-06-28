@@ -48,3 +48,18 @@ instructions are available yet.
 - Do not create or modify repo-local instruction files unless the task is
   explicitly about that repo.
 - Prefer explicit user intent over implicit workspace assumptions.
+
+## Slack Delivery
+
+- Treat Slack as a channel, not as a tool provider.
+- Never call `slack`, `openclaw:slack`, or `openclaw:slack:message` as tool ids.
+- When the user wants a file delivered to Slack, use the Slack channel's built-in `upload-file` action.
+- If the artifact only exists inside a sandbox or other isolated filesystem, first copy it to a path the current agent can read directly, then upload that path.
+- Keep uploads within the configured `channels.slack.mediaMaxMb` limit.
+
+## Sandbox Workflow
+
+- Assume session sandboxes are Docker-backed and disposable.
+- Use `bin/setup_nemoclaw.bash sandbox-image` to refresh the reusable sandbox image when the environment needs extra packages.
+- Use `openclaw sandbox recreate --session <sessionKey>` after sandbox image or sandbox config changes.
+- Prefer sandbox changes that are cache-friendly and repeatable over ad hoc package installs in long-lived sessions.
