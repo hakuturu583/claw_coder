@@ -9,7 +9,7 @@ services:
     pull_policy: build
     restart: unless-stopped
     entrypoint: ["/usr/bin/tini", "-s", "--", "/usr/local/bin/nemoclaw-entrypoint.sh"]
-    working_dir: /workspace/repositories
+    working_dir: /home/nemoclaw/.openclaw/workspace
     environment:
       HOME: /home/nemoclaw
       USER: nemoclaw

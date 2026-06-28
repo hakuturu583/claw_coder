@@ -12,7 +12,7 @@ The runtime keeps container state in named volumes:
 
 The `nemoclaw` control container runs as the `nemoclaw` user at runtime. That keeps shell state and skill data separate from root while still letting the bootstrap/install steps run as root.
 
-The `repositories/` directory is bind-mounted into the `nemoclaw` control container at `/workspace/repositories`, and the image includes `gh` so you can run GitHub CLI commands from inside that container against any checkout under that directory.
+The OpenClaw agent workspace lives in `/home/nemoclaw/.openclaw/workspace`. The `repositories/` directory is bind-mounted into the `nemoclaw` control container at `/workspace/repositories`, and the image includes `gh` so you can run GitHub CLI commands from inside that container against any checkout under that directory.
 
 If you want `gh` to work without running `gh auth login` inside the container, set `GH_TOKEN` or `GITHUB_TOKEN` in `.env` or the host environment. The control container forwards those variables and stores `gh` state under `/home/nemoclaw`.
 
@@ -118,9 +118,9 @@ bin/setup_nemoclaw.bash shell
 bin/setup_nemoclaw.bash destroy
 ```
 
-`shell` opens a shell in the persistent `nemoclaw` control container. That is where OpenClaw skill data and other per-user state should live. OpenClaw skills are stored under `/home/nemoclaw/.openclaw/skills`.
+`shell` opens a shell in the persistent `nemoclaw` control container. That is where OpenClaw skill data and other per-user state should live. OpenClaw skills are stored under `/home/nemoclaw/.openclaw/skills`, and the agent workspace is `/home/nemoclaw/.openclaw/workspace`.
 
-From that shell, you can work directly in `/workspace/repositories` and use `git` or `gh` against the mounted checkouts.
+From that shell, you can work directly in `/workspace/repositories` and use `git` or `gh` against the mounted checkouts. OpenClaw's own workspace/bootstrap files live under `/home/nemoclaw/.openclaw/workspace`, so repository checkouts stay separate from agent state.
 
 For noninteractive GitHub access, set `GH_TOKEN` or `GITHUB_TOKEN` in `.env` before starting the container.
 
@@ -137,7 +137,7 @@ tools.web.search.provider = brave
 tools.web.search.maxResults = 5
 plugins.entries.brave.enabled = true
 plugins.entries.workboard.enabled = true
-agents.defaults.workspace = /workspace/repositories
+agents.defaults.workspace = /home/nemoclaw/.openclaw/workspace
 agents.defaults.repoRoot = /workspace/repositories
 models.providers.local.baseUrl = http://inference:8000/v1
 models.providers.local.apiKey = nemoclaw-local
