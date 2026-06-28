@@ -27,6 +27,7 @@ services:
       - nemoclaw-home:/home/nemoclaw
       - nemoclaw-skills:/home/nemoclaw/.openclaw/skills
       - nemoclaw-data:/opt/nemoclaw
+      - ./openclaw/AGENTS.md:/home/nemoclaw/.openclaw/workspace/AGENTS.md:ro
       - ./repositories:/workspace/repositories
 
   model-init:
