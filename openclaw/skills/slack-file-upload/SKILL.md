@@ -15,6 +15,7 @@ Use this skill when the user wants to send a file, attachment, screenshot, log, 
 ## Rules
 
 - Slack is a channel, not a standalone tool provider.
+- If you are tempted to call `slack` or `openclaw:slack:message`, stop. Those are not valid tool ids.
 - Do not invent or call `slack`, `openclaw:slack:message`, or any other fake Slack tool id.
 - Use the Slack channel's built-in `upload-file` action for files.
 - If the file lives in the workspace already, upload that exact path.
@@ -28,6 +29,7 @@ Use this skill when the user wants to send a file, attachment, screenshot, log, 
 2. If needed, copy the artifact into a path the agent can read directly.
 3. Upload the file with the Slack `upload-file` action.
 4. If the user also wants a text reply, send a short Slack message with the upload.
+5. Do not spend time probing `tool_describe` for Slack ids unless the runtime explicitly exposes one in the current turn.
 
 ## Notes
 
