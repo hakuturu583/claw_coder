@@ -7,6 +7,7 @@ PROJECT_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 COMPOSE_FILE="${PROJECT_DIR}/docker-compose.yml"
 CONTROL_SERVICE="${NEMOCLAW_SERVICE_NAME:-nemoclaw}"
 INFERENCE_SERVICE="${NEMOCLAW_INFERENCE_SERVICE_NAME:-inference}"
+MODEL_INIT_SERVICE="${NEMOCLAW_MODEL_INIT_SERVICE_NAME:-model-init}"
 
 load_env_file() {
   local file="${1:-}"
@@ -23,9 +24,26 @@ fi
 
 INSTANCE="${NEMOCLAW_INSTANCE:-nemoclaw-vllm}"
 IMAGE="${NEMOCLAW_IMAGE:-ubuntu:24.04}"
-MODEL="${NEMOCLAW_MODEL:-deepreinforce-ai/Ornith-1.0-35B-GGUF:Q4_K_M}"
-TOKENIZER="${NEMOCLAW_TOKENIZER:-deepreinforce-ai/Ornith-1.0-35B-GGUF}"
-HF_CONFIG_PATH="${NEMOCLAW_HF_CONFIG_PATH:-deepreinforce-ai/Ornith-1.0-35B-GGUF}"
+ORNITH_SIZE="${NEMOCLAW_ORNITH_SIZE:-35b}"
+case "$ORNITH_SIZE" in
+  35b)
+    ORNITH_MODEL_DEFAULT="deepreinforce-ai/Ornith-1.0-35B-GGUF:Q4_K_M"
+    ORNITH_TOKENIZER_DEFAULT="deepreinforce-ai/Ornith-1.0-35B-GGUF"
+    ORNITH_HF_CONFIG_DEFAULT="deepreinforce-ai/Ornith-1.0-35B-GGUF"
+    ;;
+  9b)
+    ORNITH_MODEL_DEFAULT="deepreinforce-ai/Ornith-1.0-9B-GGUF:Q4_K_M"
+    ORNITH_TOKENIZER_DEFAULT="deepreinforce-ai/Ornith-1.0-9B-GGUF"
+    ORNITH_HF_CONFIG_DEFAULT="deepreinforce-ai/Ornith-1.0-9B-GGUF"
+    ;;
+  *)
+    die "unsupported ornith size: $ORNITH_SIZE (expected 35b or 9b)"
+    ;;
+esac
+
+MODEL="${NEMOCLAW_MODEL:-$ORNITH_MODEL_DEFAULT}"
+TOKENIZER="${NEMOCLAW_TOKENIZER:-$ORNITH_TOKENIZER_DEFAULT}"
+HF_CONFIG_PATH="${NEMOCLAW_HF_CONFIG_PATH:-$ORNITH_HF_CONFIG_DEFAULT}"
 HF_OVERRIDES="${NEMOCLAW_HF_OVERRIDES:-}"
 GGUF_FILE="${NEMOCLAW_GGUF_FILE:-}"
 API_HOST="${NEMOCLAW_API_HOST:-0.0.0.0}"
@@ -38,8 +56,6 @@ CUDA_VARIANT="${NEMOCLAW_CUDA_VARIANT:-cu130}"
 LLAMA_CPP_TAG="${NEMOCLAW_LLAMA_CPP_TAG:-b9803}"
 LLAMA_N_GPU_LAYERS="${NEMOCLAW_LLAMA_N_GPU_LAYERS:-999}"
 PASS_HF_TOKEN=0
-PASS_BRAVE_SEARCH=0
-PASS_SLACK=0
 
 export INSTANCE IMAGE MODEL TOKENIZER HF_CONFIG_PATH HF_OVERRIDES GGUF_FILE
 export API_HOST API_PORT HOST_PORT GPU_ID TP_SIZE MAX_MODEL_LEN CUDA_VARIANT
@@ -56,6 +72,7 @@ Global options:
   --instance NAME        Compose project name (default: $INSTANCE)
   --image IMAGE          Base image used by the Dockerfile (default: $IMAGE)
   --model MODEL          GGUF model id/path (default: $MODEL)
+  --ornith-size SIZE     Ornith preset size: 35b or 9b (default: $ORNITH_SIZE)
   --tokenizer MODEL      tokenizer repo/path (default: $TOKENIZER)
   --hf-config-path MODEL  Deprecated compatibility option (default: $HF_CONFIG_PATH)
   --hf-overrides JSON    Deprecated compatibility option
@@ -65,20 +82,18 @@ Global options:
   --gpu-id ID            Docker GPU request: all, auto, none, or device ids (default: $GPU_ID)
   --tp-size N            Deprecated compatibility option (default: $TP_SIZE)
   --max-model-len N      llama.cpp context size (default: $MAX_MODEL_LEN)
-  --cuda-variant NAME    CUDA toolkit variant for llama.cpp build: cu130, cpu (default: $CUDA_VARIANT)
-  --llama-cpp-tag TAG    llama.cpp release tag or git ref (default: $LLAMA_CPP_TAG)
+  --cuda-variant NAME    Legacy compatibility option retained for older configs (default: $CUDA_VARIANT)
+  --llama-cpp-tag TAG    Legacy compatibility option retained for older configs (default: $LLAMA_CPP_TAG)
   --n-gpu-layers N       llama.cpp GPU offload layers (default: $LLAMA_N_GPU_LAYERS)
   --pass-hf-token        Pass only HF_TOKEN/HUGGING_FACE_HUB_TOKEN into setup
-  --pass-brave-search    Pass Brave Search credentials into setup
-  --pass-slack           Pass Slack credentials into setup
   -h, --help             Show help
 
 Commands:
   init-host              Compose/Docker do not need host initialization
   doctor                 Check host-side requirements
   create                 Create the Compose project and both service containers
-  install                Install/build llama.cpp and inference config
-  configure-integrations Write Brave Search and Slack config/credentials for the control container
+  install                Prepare the model cache and inference config
+  configure-openclaw     Write the OpenClaw gateway config for the control container
   up                     create + install + start
   start                  Start the Compose service
   stop                   Stop the Compose service
@@ -120,27 +135,6 @@ append_compose_env_if_set() {
       target+=(-e "${name}=${value}")
     fi
   done
-}
-
-host_env_any_set() {
-  local name
-  for name in "$@"; do
-    if [[ -n "${!name:-}" ]]; then
-      return 0
-    fi
-  done
-  return 1
-}
-
-validate_requested_integration_credentials() {
-  if [[ "$PASS_BRAVE_SEARCH" == 1 ]] &&
-    ! host_env_any_set BRAVE_SEARCH_API_KEY BRAVE_API_KEY; then
-    die "--pass-brave-search requires BRAVE_SEARCH_API_KEY or BRAVE_API_KEY in the host environment"
-  fi
-  if [[ "$PASS_SLACK" == 1 ]] &&
-    ! host_env_any_set SLACK_BOT_TOKEN SLACK_APP_TOKEN SLACK_SIGNING_SECRET SLACK_CLIENT_SECRET; then
-    die "--pass-slack requires SLACK_BOT_TOKEN, SLACK_APP_TOKEN, SLACK_SIGNING_SECRET, or SLACK_CLIENT_SECRET in the host environment"
-  fi
 }
 
 compose_base_args() {
@@ -275,7 +269,6 @@ cmd_create() {
 cmd_install() {
   require_docker
   require_compose
-  validate_requested_integration_credentials
 
   local -a env_args=()
   if [[ "$PASS_HF_TOKEN" == 1 ]]; then
@@ -283,290 +276,20 @@ cmd_install() {
     [[ -n "$token" ]] || die "--pass-hf-token requires HF_TOKEN or HUGGING_FACE_HUB_TOKEN in the host environment"
     env_args+=(-e "HF_TOKEN=${token}" -e "HUGGING_FACE_HUB_TOKEN=${token}")
   fi
-  if [[ "$PASS_BRAVE_SEARCH" == 1 ]]; then
-    append_compose_env_if_set env_args BRAVE_SEARCH_API_KEY BRAVE_API_KEY
-  fi
-  if [[ "$PASS_SLACK" == 1 ]]; then
-    append_compose_env_if_set env_args \
-      SLACK_BOT_TOKEN \
-      SLACK_APP_TOKEN \
-      SLACK_SIGNING_SECRET \
-      SLACK_CLIENT_ID \
-      SLACK_CLIENT_SECRET \
-      SLACK_CHANNEL_ID \
-      SLACK_TEAM_ID
-  fi
 
-  compose run --rm --no-deps --build "${env_args[@]}" --entrypoint bash "$INFERENCE_SERVICE" -s <<'REMOTE'
-set -euo pipefail
-export DEBIAN_FRONTEND=noninteractive
-
-install -d -m 0755 /opt/nemoclaw /opt/nemoclaw /var/lib/nemoclaw
-rm -rf /opt/nemoclaw/venv
-python3 -m venv /opt/nemoclaw/venv
-. /opt/nemoclaw/venv/bin/activate
-python -m pip install --upgrade pip wheel "setuptools<80,>=77.0.3"
-python -m pip install huggingface_hub openai
-
-case "${NEMOCLAW_CUDA_VARIANT}" in
-  cu130)
-    required_cuda="${NEMOCLAW_CUDA_VARIANT#cu}"
-    required_cuda="${required_cuda:0:2}.${required_cuda:2:1}"
-    current_cuda="${NEMOCLAW_HOST_CUDA_VERSION:-}"
-    if [ -z "$current_cuda" ]; then
-      current_cuda="$(nvidia-smi 2>/dev/null | sed -n 's/.*CUDA Version: \([0-9][0-9]*\.[0-9][0-9]*\).*/\1/p' | head -n 1 || true)"
-    fi
-    if [ -z "$current_cuda" ]; then
-      echo "could not detect CUDA version from host or container nvidia-smi" >&2
-      exit 1
-    fi
-    if ! awk -v current="$current_cuda" -v required="$required_cuda" 'BEGIN { split(current,c,"."); split(required,r,"."); exit !((c[1]+0)>(r[1]+0)||((c[1]+0)==(r[1]+0)&&(c[2]+0)>=(r[2]+0))) }'; then
-      if [ "${NEMOCLAW_ALLOW_UNSUPPORTED_DRIVER:-0}" != "1" ]; then
-        echo "NVIDIA driver exposes CUDA ${current_cuda}, but llama.cpp ${NEMOCLAW_CUDA_VARIANT} build needs CUDA ${required_cuda} or newer." >&2
-        echo "Update the host NVIDIA driver, set --cuda-variant cpu, or set NEMOCLAW_ALLOW_UNSUPPORTED_DRIVER=1 to force installation." >&2
-        exit 1
-      fi
-    fi
-    python -m pip install \
-      nvidia-cuda-cccl nvidia-cuda-nvcc nvidia-cuda-runtime nvidia-cuda-nvrtc nvidia-cublas nvidia-curand \
-      nvidia-cusolver nvidia-cusparse nvidia-nvjitlink nvidia-nvtx
-    cuda_root="/opt/nemoclaw/venv/lib/python3.12/site-packages/nvidia/cu13"
-    for lib in "$cuda_root"/lib/*.so.*; do
-      base="${lib%%.so.*}.so"
-      [ -e "$base" ] || ln -s "${lib##*/}" "$base"
-    done
-    build_cuda=1
-    ;;
-  cpu|none|pypi)
-    build_cuda=0
-    ;;
-  *)
-    echo "unsupported NEMOCLAW_CUDA_VARIANT: ${NEMOCLAW_CUDA_VARIANT}" >&2
-    exit 1
-    ;;
-esac
-
-llama_model_path="$NEMOCLAW_MODEL"
-if [[ "$NEMOCLAW_MODEL" == *:* ]]; then
-  model_repo="${NEMOCLAW_MODEL%%:*}"
-  quant_name="${NEMOCLAW_MODEL#*:}"
-  gguf_file="${NEMOCLAW_GGUF_FILE:-}"
-  if [ -z "$gguf_file" ]; then
-    repo_base="${model_repo##*/}"
-    repo_base="${repo_base,,}"
-    repo_base="${repo_base%-gguf}"
-    gguf_file="${repo_base}-${quant_name}.gguf"
-  fi
-  install -d -m 0755 /var/lib/nemoclaw/models
-  llama_model_path="$(python - "$model_repo" "$gguf_file" <<'PY'
-import sys
-from huggingface_hub import hf_hub_download
-repo, filename = sys.argv[1], sys.argv[2]
-print(hf_hub_download(repo_id=repo, filename=filename,
-                      local_dir="/var/lib/nemoclaw/models",
-                      local_dir_use_symlinks=False))
-PY
-)"
-fi
-
-llama_tag="${NEMOCLAW_LLAMA_CPP_TAG:-b9803}"
-rm -rf /opt/nemoclaw/llama.cpp /opt/nemoclaw/llama-build
-git clone --depth 1 --branch "$llama_tag" https://github.com/ggml-org/llama.cpp.git /opt/nemoclaw/llama.cpp
-
-cmake_args=(
-  -S /opt/nemoclaw/llama.cpp
-  -B /opt/nemoclaw/llama-build
-  -DCMAKE_BUILD_TYPE=Release
-  -DLLAMA_CURL=OFF
-)
-if [ "$build_cuda" = 1 ]; then
-  cuda_root="/opt/nemoclaw/venv/lib/python3.12/site-packages/nvidia/cu13"
-  cmake_args+=(
-    -DGGML_CUDA=ON
-    -DCMAKE_CUDA_COMPILER="${cuda_root}/bin/nvcc"
-    -DCUDAToolkit_ROOT="${cuda_root}"
-    -DCMAKE_EXE_LINKER_FLAGS="-L${cuda_root}/lib -Wl,-rpath,${cuda_root}/lib"
-    -DCMAKE_SHARED_LINKER_FLAGS="-L${cuda_root}/lib -Wl,-rpath,${cuda_root}/lib"
-  )
-fi
-cmake "${cmake_args[@]}"
-cmake --build /opt/nemoclaw/llama-build --config Release -j"$(nproc)" --target llama-server
-install -m 0755 /opt/nemoclaw/llama-build/bin/llama-server /opt/nemoclaw/llama-server
-
-{
-  printf 'NEMOCLAW_MODEL=%q\n' "$NEMOCLAW_MODEL"
-  printf 'NEMOCLAW_LLAMA_MODEL_PATH=%q\n' "$llama_model_path"
-  printf 'NEMOCLAW_API_HOST=%q\n' "$NEMOCLAW_API_HOST"
-  printf 'NEMOCLAW_API_PORT=%q\n' "$NEMOCLAW_API_PORT"
-  printf 'NEMOCLAW_MAX_MODEL_LEN=%q\n' "$NEMOCLAW_MAX_MODEL_LEN"
-  printf 'NEMOCLAW_LLAMA_N_GPU_LAYERS=%q\n' "$NEMOCLAW_LLAMA_N_GPU_LAYERS"
-  printf 'NEMOCLAW_CUDA_VARIANT=%q\n' "$NEMOCLAW_CUDA_VARIANT"
-} >/opt/nemoclaw/env
-chmod 0600 /opt/nemoclaw/env
-
-if [ -n "${HF_TOKEN:-}" ]; then
-  printf 'HF_TOKEN=%s\nHUGGING_FACE_HUB_TOKEN=%s\n' "$HF_TOKEN" "$HF_TOKEN" >/opt/nemoclaw/huggingface.env
-  chmod 0600 /opt/nemoclaw/huggingface.env
-else
-  : >/opt/nemoclaw/huggingface.env
-  chmod 0600 /opt/nemoclaw/huggingface.env
-fi
-
-write_optional_env() {
-  local name="$1"
-  local value="${!name:-}"
-  if [ -n "$value" ]; then
-    printf '%s=%q\n' "$name" "$value"
-  fi
-}
-
-{
-  printf 'OPENCLAW_SEARCH_PROVIDER=brave\n'
-  printf 'OPENCLAW_COMMUNICATION_PROVIDER=slack\n'
-  if [ -z "${BRAVE_SEARCH_API_KEY:-}" ] && [ -n "${BRAVE_API_KEY:-}" ]; then
-    printf 'BRAVE_SEARCH_API_KEY=%q\n' "$BRAVE_API_KEY"
-  fi
-  write_optional_env BRAVE_SEARCH_API_KEY
-  write_optional_env BRAVE_API_KEY
-  write_optional_env SLACK_BOT_TOKEN
-  write_optional_env SLACK_APP_TOKEN
-  write_optional_env SLACK_SIGNING_SECRET
-  write_optional_env SLACK_CLIENT_ID
-  write_optional_env SLACK_CLIENT_SECRET
-  write_optional_env SLACK_CHANNEL_ID
-  write_optional_env SLACK_TEAM_ID
-} >/opt/nemoclaw/integrations.env
-chmod 0600 /opt/nemoclaw/integrations.env
-ln -sf /opt/nemoclaw/integrations.env /opt/nemoclaw/integrations.env
-
-cat >/opt/nemoclaw/openai.env <<EOF
-OPENAI_BASE_URL=http://127.0.0.1:${NEMOCLAW_API_PORT}/v1
-OPENAI_API_KEY=nemoclaw-local
-OPENAI_MODEL=${NEMOCLAW_MODEL}
-EOF
-chmod 0600 /opt/nemoclaw/openai.env
-
-cat >/opt/nemoclaw/agent.json <<EOF
-{
-  "provider": "openai-compatible",
-  "base_url": "http://127.0.0.1:${NEMOCLAW_API_PORT}/v1",
-  "api_key": "nemoclaw-local",
-  "model": "${NEMOCLAW_MODEL}",
-  "integrations": {
-    "search": {
-      "provider": "brave",
-      "env_file": "/opt/nemoclaw/integrations.env",
-      "api_key_env": "BRAVE_SEARCH_API_KEY"
-    },
-    "communication": {
-      "provider": "slack",
-      "env_file": "/opt/nemoclaw/integrations.env",
-      "bot_token_env": "SLACK_BOT_TOKEN",
-      "app_token_env": "SLACK_APP_TOKEN",
-      "signing_secret_env": "SLACK_SIGNING_SECRET"
-    }
-  },
-  "isolation": {
-    "runtime": "docker-compose",
-    "host_environment_forwarding": "disabled-by-default"
-  }
-}
-EOF
-chmod 0644 /opt/nemoclaw/agent.json
-REMOTE
+  compose run --rm --no-deps --build "${env_args[@]}" \
+    --entrypoint /usr/local/bin/install-nemoclaw-inference.sh \
+    "$MODEL_INIT_SERVICE"
 
   printf 'installed isolated llama.cpp runtime in %s\n' "$INSTANCE"
 }
 
-cmd_configure_integrations() {
+cmd_configure_openclaw() {
   require_docker
   require_compose
-  if [[ "$PASS_BRAVE_SEARCH" == 0 && "$PASS_SLACK" == 0 ]]; then
-    die "configure-integrations requires --pass-brave-search and/or --pass-slack"
-  fi
-  validate_requested_integration_credentials
+  compose run --rm --no-deps --build --entrypoint /usr/local/bin/install-openclaw-config.sh "$CONTROL_SERVICE"
 
-  local -a env_args=()
-  if [[ "$PASS_BRAVE_SEARCH" == 1 ]]; then
-    append_compose_env_if_set env_args BRAVE_SEARCH_API_KEY BRAVE_API_KEY
-  fi
-  if [[ "$PASS_SLACK" == 1 ]]; then
-    append_compose_env_if_set env_args \
-      SLACK_BOT_TOKEN \
-      SLACK_APP_TOKEN \
-      SLACK_SIGNING_SECRET \
-      SLACK_CLIENT_ID \
-      SLACK_CLIENT_SECRET \
-      SLACK_CHANNEL_ID \
-      SLACK_TEAM_ID
-  fi
-
-  compose run --rm --no-deps --build "${env_args[@]}" --entrypoint bash "$CONTROL_SERVICE" -s <<'REMOTE'
-set -euo pipefail
-
-install -d -m 0755 /opt/nemoclaw /opt/nemoclaw
-
-write_optional_env() {
-  local name="$1"
-  local value="${!name:-}"
-  if [ -n "$value" ]; then
-    printf '%s=%q\n' "$name" "$value"
-  fi
-}
-
-{
-  printf 'OPENCLAW_SEARCH_PROVIDER=brave\n'
-  printf 'OPENCLAW_COMMUNICATION_PROVIDER=slack\n'
-  if [ -z "${BRAVE_SEARCH_API_KEY:-}" ] && [ -n "${BRAVE_API_KEY:-}" ]; then
-    printf 'BRAVE_SEARCH_API_KEY=%q\n' "$BRAVE_API_KEY"
-  fi
-  write_optional_env BRAVE_SEARCH_API_KEY
-  write_optional_env BRAVE_API_KEY
-  write_optional_env SLACK_BOT_TOKEN
-  write_optional_env SLACK_APP_TOKEN
-  write_optional_env SLACK_SIGNING_SECRET
-  write_optional_env SLACK_CLIENT_ID
-  write_optional_env SLACK_CLIENT_SECRET
-  write_optional_env SLACK_CHANNEL_ID
-  write_optional_env SLACK_TEAM_ID
-} >/opt/nemoclaw/integrations.env
-chmod 0600 /opt/nemoclaw/integrations.env
-ln -sf /opt/nemoclaw/integrations.env /opt/nemoclaw/integrations.env
-
-if [ -r /opt/nemoclaw/env ]; then
-  . /opt/nemoclaw/env
-fi
-
-cat >/opt/nemoclaw/agent.json <<EOF
-{
-  "provider": "openai-compatible",
-  "base_url": "http://127.0.0.1:${NEMOCLAW_API_PORT:-8000}/v1",
-  "api_key": "nemoclaw-local",
-  "model": "${NEMOCLAW_MODEL:-deepreinforce-ai/Ornith-1.0-35B-GGUF:Q4_K_M}",
-  "integrations": {
-    "search": {
-      "provider": "brave",
-      "env_file": "/opt/nemoclaw/integrations.env",
-      "api_key_env": "BRAVE_SEARCH_API_KEY"
-    },
-    "communication": {
-      "provider": "slack",
-      "env_file": "/opt/nemoclaw/integrations.env",
-      "bot_token_env": "SLACK_BOT_TOKEN",
-      "app_token_env": "SLACK_APP_TOKEN",
-      "signing_secret_env": "SLACK_SIGNING_SECRET"
-    }
-  },
-  "isolation": {
-    "runtime": "docker-compose",
-    "host_environment_forwarding": "disabled-by-default"
-  }
-}
-EOF
-chmod 0644 /opt/nemoclaw/agent.json
-REMOTE
-
-  printf 'configured Brave Search and Slack integration metadata in %s\n' "$INSTANCE"
+  printf 'configured OpenClaw gateway metadata in %s\n' "$INSTANCE"
 }
 
 cmd_start() {
@@ -584,20 +307,49 @@ wait_for_runtime() {
   if [[ "$HOST_PORT" == "none" || -z "$HOST_PORT" ]]; then
     for _ in $(seq 1 120); do
       if compose exec -T "$INFERENCE_SERVICE" bash -lc 'curl -fsS "http://127.0.0.1:${NEMOCLAW_API_PORT}/v1/models" >/dev/null 2>&1'; then
-        return 0
+        break
       fi
       sleep 5
     done
-    echo "llama.cpp did not become ready at http://127.0.0.1:${API_PORT}/v1/models" >&2
+    if ! compose exec -T "$INFERENCE_SERVICE" bash -lc 'curl -fsS "http://127.0.0.1:${NEMOCLAW_API_PORT}/v1/models" >/dev/null 2>&1'; then
+      echo "llama.cpp did not become ready at http://127.0.0.1:${API_PORT}/v1/models" >&2
+      return 1
+    fi
+    for _ in $(seq 1 60); do
+      local control_id control_status
+      control_id="$(compose ps -q "$CONTROL_SERVICE" 2>/dev/null || true)"
+      if [[ -n "$control_id" ]]; then
+        control_status="$(docker inspect -f '{{.State.Status}}' "$control_id" 2>/dev/null || true)"
+        if [[ "$control_status" == "running" ]]; then
+          return 0
+        fi
+      fi
+      sleep 2
+    done
+    echo "OpenClaw gateway did not reach running state" >&2
     return 1
   else
     for _ in $(seq 1 120); do
       if curl -fsS "http://127.0.0.1:${HOST_PORT}/v1/models" >/dev/null 2>&1; then
-        return 0
+        break
       fi
       sleep 5
     done
-    die "llama.cpp did not become ready at http://127.0.0.1:${HOST_PORT}/v1/models"
+    if ! curl -fsS "http://127.0.0.1:${HOST_PORT}/v1/models" >/dev/null 2>&1; then
+      die "llama.cpp did not become ready at http://127.0.0.1:${HOST_PORT}/v1/models"
+    fi
+    for _ in $(seq 1 60); do
+      local control_id control_status
+      control_id="$(compose ps -q "$CONTROL_SERVICE" 2>/dev/null || true)"
+      if [[ -n "$control_id" ]]; then
+        control_status="$(docker inspect -f '{{.State.Status}}' "$control_id" 2>/dev/null || true)"
+        if [[ "$control_status" == "running" ]]; then
+          return 0
+        fi
+      fi
+      sleep 2
+    done
+    die "OpenClaw gateway did not reach running state"
   fi
 }
 
@@ -616,7 +368,7 @@ cmd_status() {
 cmd_logs() {
   require_docker
   require_compose
-  compose logs -f "$INFERENCE_SERVICE"
+  compose logs -f "$CONTROL_SERVICE" "$INFERENCE_SERVICE"
 }
 
 cmd_test() {
@@ -650,7 +402,6 @@ cmd_destroy() {
 
 cmd_up() {
   cmd_create
-  cmd_install
   cmd_start
   wait_for_runtime
 }
@@ -660,6 +411,25 @@ while [[ $# -gt 0 ]]; do
     --instance) INSTANCE="${2:?missing value}"; shift 2 ;;
     --image) IMAGE="${2:?missing value}"; shift 2 ;;
     --model) MODEL="${2:?missing value}"; shift 2 ;;
+    --ornith-size)
+      ORNITH_SIZE="${2:?missing value}"
+      case "$ORNITH_SIZE" in
+        35b)
+          MODEL="deepreinforce-ai/Ornith-1.0-35B-GGUF:Q4_K_M"
+          TOKENIZER="deepreinforce-ai/Ornith-1.0-35B-GGUF"
+          HF_CONFIG_PATH="deepreinforce-ai/Ornith-1.0-35B-GGUF"
+          ;;
+        9b)
+          MODEL="deepreinforce-ai/Ornith-1.0-9B-GGUF:Q4_K_M"
+          TOKENIZER="deepreinforce-ai/Ornith-1.0-9B-GGUF"
+          HF_CONFIG_PATH="deepreinforce-ai/Ornith-1.0-9B-GGUF"
+          ;;
+        *)
+          die "unsupported ornith size: $ORNITH_SIZE (expected 35b or 9b)"
+          ;;
+      esac
+      shift 2
+      ;;
     --tokenizer) TOKENIZER="${2:?missing value}"; shift 2 ;;
     --hf-config-path) HF_CONFIG_PATH="${2:?missing value}"; shift 2 ;;
     --hf-overrides) HF_OVERRIDES="${2:?missing value}"; shift 2 ;;
@@ -674,8 +444,6 @@ while [[ $# -gt 0 ]]; do
     --llama-cpp-tag) LLAMA_CPP_TAG="${2:?missing value}"; shift 2 ;;
     --n-gpu-layers) LLAMA_N_GPU_LAYERS="${2:?missing value}"; shift 2 ;;
     --pass-hf-token) PASS_HF_TOKEN=1; shift ;;
-    --pass-brave-search) PASS_BRAVE_SEARCH=1; shift ;;
-    --pass-slack) PASS_SLACK=1; shift ;;
     -h|--help) usage; exit 0 ;;
     --) shift; break ;;
     -*) die "unknown option: $1" ;;
@@ -716,7 +484,7 @@ case "$COMMAND" in
   doctor) cmd_doctor "$@" ;;
   create) cmd_create "$@" ;;
   install) cmd_install "$@" ;;
-  configure-integrations) cmd_configure_integrations "$@" ;;
+  configure-openclaw) cmd_configure_openclaw "$@" ;;
   up) cmd_up "$@" ;;
   start) cmd_start "$@" ;;
   stop) cmd_stop "$@" ;;

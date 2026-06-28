@@ -1,19 +1,24 @@
 # nemoclaw
 
-`nemoclaw` builds a Docker Compose based local inference runtime for NemoClaw/OpenClaw-style coding agents. It splits the control plane and the model server into separate containers: `nemoclaw` keeps the persistent OpenClaw state, and `inference` runs `deepreinforce-ai/Ornith-1.0-35B-GGUF` through llama.cpp as a local OpenAI-compatible endpoint.
+`nemoclaw` builds a Docker Compose based local inference runtime for NemoClaw/OpenClaw-style coding agents. It splits the control plane and the model server into separate containers: `nemoclaw` runs the OpenClaw gateway and keeps the persistent OpenClaw state, and `inference` runs a prebuilt `llama.cpp` server image against `deepreinforce-ai/Ornith-1.0-35B-GGUF` as a local OpenAI-compatible endpoint. The default character name is `Clawくん`.
 
 The runtime keeps container state in named volumes:
 
 - `/home/nemoclaw` for NemoClaw/OpenClaw state
 - `/home/nemoclaw/.openclaw/skills` for persistent OpenClaw skills
+- `/home/nemoclaw/.openclaw/openclaw.json` for the gateway config
 - `/var/lib/nemoclaw/models` for Hugging Face model files
 - `/var/lib/nemoclaw/huggingface` for the Hugging Face cache
 
 The `nemoclaw` control container runs as the `nemoclaw` user at runtime. That keeps shell state and skill data separate from root while still letting the bootstrap/install steps run as root.
 
-If a local `.env` file exists next to the command you run, it is sourced before option parsing. Set `NEMOCLAW_ENV_FILE` to point at another dotenv file, or set it to `none` to disable the auto-load.
+The `repositories/` directory is bind-mounted into the `nemoclaw` control container at `/workspace/repositories`, and the image includes `gh` so you can run GitHub CLI commands from inside that container against any checkout under that directory.
 
-The same explicit-forwarding rule applies to optional OpenClaw integrations. Use `--pass-brave-search` and `--pass-slack` to copy only the supported Brave Search and Slack variables into the container setup.
+If you want `gh` to work without running `gh auth login` inside the container, set `GH_TOKEN` or `GITHUB_TOKEN` in `.env` or the host environment. The control container forwards those variables and stores `gh` state under `/home/nemoclaw`.
+
+If you need local git checkouts, keep them under `repositories/` in this repo root. That path is ignored by git, so it is safe for throwaway or mirrored clones used by the control container.
+
+If a local `.env` file exists next to the command you run, it is sourced before option parsing. Set `NEMOCLAW_ENV_FILE` to point at another dotenv file, or set it to `none` to disable the auto-load.
 
 ## What It Creates
 
@@ -22,13 +27,12 @@ The same explicit-forwarding rule applies to optional OpenClaw integrations. Use
 - Inference container: `inference`
 - Persistent user home for NemoClaw/OpenClaw: `/home/nemoclaw`
 - Persistent OpenClaw skill directory: `/home/nemoclaw/.openclaw/skills`
+- Persistent OpenClaw gateway config: `/home/nemoclaw/.openclaw/openclaw.json`
 - Persistent Hugging Face model directory: `/var/lib/nemoclaw/models`
 - Persistent Hugging Face cache: `/var/lib/nemoclaw/huggingface`
 - Optional host-local proxy port: `--host-port`
 - Local agent endpoint config:
   - `/opt/nemoclaw/openai.env`
-  - `/opt/nemoclaw/agent.json`
-  - `/opt/nemoclaw/integrations.env`
 
 Default model settings:
 
@@ -43,7 +47,7 @@ endpoint:  http://127.0.0.1:8000/v1
 - Docker Engine with the Compose v2 plugin
 - Enough RAM/VRAM for the selected GGUF quant
 - NVIDIA Container Toolkit if GPU inference is required
-- NVIDIA driver exposing CUDA 13.0 or newer for the default llama.cpp `cu130` CUDA build
+- NVIDIA driver exposing CUDA 13.0 or newer for the default `llama.cpp` CUDA server image
 - Network access from the container for apt, pip, Hugging Face, and model downloads
 
 Check the host:
@@ -60,6 +64,14 @@ bin/setup_nemoclaw.bash up
 bin/setup_nemoclaw.bash test
 ```
 
+If you want a smaller model for low-VRAM testing, run:
+
+```bash
+bin/setup_nemoclaw.bash --ornith-size 9b up
+```
+
+You can also run `docker compose up` directly. On the first start, a lightweight model-init service will download the GGUF file into the persistent model volume, the inference container will start the prebuilt `llama.cpp` server image, and the control container will wait for inference, write `~/.openclaw/openclaw.json`, and start `openclaw gateway`.
+
 For a gated/private download:
 
 ```bash
@@ -73,15 +85,19 @@ You can keep credentials outside git in a local `.env` file:
 cp .env.example .env
 ```
 
-To enable Brave Search for web search and Slack for user communication:
+Put `GH_TOKEN` or `GITHUB_TOKEN` in that `.env` file if you want `gh` to work inside the `nemoclaw` container without an interactive login. Set `NEMOCLAW_CHARACTER_NAME=Clawくん` there if you want to override the default character name used by the gateway.
+
+The OpenClaw Slack Channel expects `SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN`, and `SLACK_CHANNEL_ID` in `.env` or the host environment.
+Brave web search expects `BRAVE_API_KEY` or `BRAVE_SEARCH_API_KEY`.
+Set `NEMOCLAW_ORNITH_SIZE=9b` if you want the smaller preset by default.
 
 ```bash
-bin/setup_nemoclaw.bash --pass-brave-search --pass-slack configure-integrations
+bin/setup_nemoclaw.bash configure-openclaw
 ```
 
 By default the endpoint is only available inside the inference container. Add `--host-port` only when you want a host-local proxy published on `127.0.0.1`.
 
-NemoClaw or another coding agent should use:
+Clawくん or another coding agent should use:
 
 ```text
 OPENAI_BASE_URL=http://127.0.0.1:8000/v1
@@ -102,25 +118,35 @@ bin/setup_nemoclaw.bash destroy
 
 `shell` opens a shell in the persistent `nemoclaw` control container. That is where OpenClaw skill data and other per-user state should live. OpenClaw skills are stored under `/home/nemoclaw/.openclaw/skills`.
 
-## OpenClaw Integrations
+From that shell, you can work directly in `/workspace/repositories` and use `git` or `gh` against the mounted checkouts.
 
-`configure-integrations` writes `/opt/nemoclaw/integrations.env` with:
+For noninteractive GitHub access, set `GH_TOKEN` or `GITHUB_TOKEN` in `.env` before starting the container.
+
+## OpenClaw Gateway
+
+`configure-openclaw` writes `/home/nemoclaw/.openclaw/openclaw.json` with:
 
 ```text
-OPENCLAW_SEARCH_PROVIDER=brave
-OPENCLAW_COMMUNICATION_PROVIDER=slack
-BRAVE_SEARCH_API_KEY=...
-BRAVE_API_KEY=...
-SLACK_BOT_TOKEN=...
-SLACK_APP_TOKEN=...
-SLACK_SIGNING_SECRET=...
-SLACK_CLIENT_ID=...
-SLACK_CLIENT_SECRET=...
-SLACK_CHANNEL_ID=...
-SLACK_TEAM_ID=...
+gateway.bind = loopback
+tools.profile = coding
+tools.web.search.provider = brave
+tools.web.search.maxResults = 5
+plugins.entries.brave.enabled = true
+plugins.entries.workboard.enabled = true
+agents.defaults.workspace = /workspace/repositories
+agents.defaults.repoRoot = /workspace/repositories
+models.providers.local.baseUrl = http://inference:8000/v1
+models.providers.local.apiKey = nemoclaw-local
+channels.slack.enabled = true
+channels.slack.mode = socket
+channels.slack.botToken = env:SLACK_BOT_TOKEN
+channels.slack.appToken = env:SLACK_APP_TOKEN
+channels.slack.channels.<id>.allow = true
+channels.slack.channels.<id>.requireMention = false
 ```
 
-Only variables present in the host environment and enabled by the matching pass-through flag are copied. The file is mode `0600` and is also symlinked at `/opt/nemoclaw/integrations.env` for runtime helpers. `agent.json` records Brave Search and Slack as the configured OpenClaw integrations and points clients at this env file.
+The gateway reads its Slack credentials and Brave Search key from the container environment. The control container waits for inference to answer `/v1/models`, writes the config, and then starts `openclaw gateway` as the `nemoclaw` user.
+The Brave plugin backs web search, and the Workboard plugin is enabled so OpenClaw Kanban-style task tracking is available inside OpenClaw.
 
 ## Tuning
 
@@ -148,19 +174,19 @@ Disable GPU attachment:
 bin/setup_nemoclaw.bash --gpu-id none up
 ```
 
-Install a pinned llama.cpp release tag:
+Override the llama.cpp server image:
 
 ```bash
-bin/setup_nemoclaw.bash --llama-cpp-tag b9803 up
+NEMOCLAW_LLAMA_IMAGE=ghcr.io/ggml-org/llama.cpp:server-cuda13 bin/setup_nemoclaw.bash up
 ```
 
-Choose the llama.cpp CUDA build variant:
+Choose the smaller Ornith model preset:
 
 ```bash
-bin/setup_nemoclaw.bash --cuda-variant cu130 up
+bin/setup_nemoclaw.bash --ornith-size 9b up
 ```
 
-The default builds llama.cpp `b9803` with CUDA 13.0 support, which expects hosts whose `nvidia-smi` reports `CUDA Version: 13.0` or newer. Use `--cuda-variant cpu` to build without CUDA offload.
+The default inference backend is the prebuilt `llama.cpp` CUDA server image. Override `NEMOCLAW_LLAMA_IMAGE` if you need a different `llama.cpp` server tag, such as a CPU-only image.
 
 Tune GPU offload:
 
@@ -170,9 +196,11 @@ bin/setup_nemoclaw.bash --n-gpu-layers 999 up
 
 ## Notes
 
-The tool resolves the GGUF file from the `repo_id:quant` form through Hugging Face Hub, then starts `llama-server` with the local file path. The Hugging Face download cache and the local model directory are both backed by named Docker volumes, so downloads survive container recreation.
+The `model-init` service resolves the GGUF file from the `repo_id:quant` form through Hugging Face Hub, and the inference container starts `llama-server` with the resulting local file path. The Hugging Face download cache and the local model directory are both backed by named Docker volumes, so downloads survive container recreation.
 
-The persistent `nemoclaw` user is there so OpenClaw skill data and other per-user state can live across container rebuilds. OpenClaw skill data survives via the `/home/nemoclaw/.openclaw/skills` volume.
+The persistent `nemoclaw` user is there so OpenClaw skill data and other per-user state can live across container rebuilds. OpenClaw skill data survives via the `/home/nemoclaw/.openclaw/skills` volume, and the gateway config survives via `/home/nemoclaw/.openclaw/openclaw.json`.
+
+The control container can also be used for GitHub operations because the repository is mounted in-place and `gh` is installed in the image.
 
 Sources used while choosing defaults:
 
