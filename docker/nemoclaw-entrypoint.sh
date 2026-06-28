@@ -11,9 +11,12 @@ if [ -z "${SLACK_BOT_TOKEN:-}" ] || [ -z "${SLACK_APP_TOKEN:-}" ] || [ -z "${SLA
 fi
 
 if [ -d /home/nemoclaw ]; then
-  chown -R nemoclaw:nemoclaw /home/nemoclaw || true
+  install -d -o nemoclaw -g nemoclaw -m 0755 \
+    /home/nemoclaw \
+    /home/nemoclaw/.openclaw \
+    /home/nemoclaw/.openclaw/skills \
+    /home/nemoclaw/.openclaw/workspace || true
 fi
-install -d -o nemoclaw -g nemoclaw -m 0755 /home/nemoclaw/.openclaw /home/nemoclaw/.openclaw/skills || true
 
 if [ ! -x /opt/openclaw/bin/openclaw ]; then
   echo "error: openclaw CLI is missing from /opt/openclaw/bin/openclaw" >&2
@@ -27,8 +30,6 @@ export TMPDIR=/tmp/openclaw-1001
 
 gosu nemoclaw:nemoclaw env HOME=/home/nemoclaw TMPDIR=/tmp/openclaw-1001 openclaw plugins install --force @openclaw/slack
 gosu nemoclaw:nemoclaw env HOME=/home/nemoclaw TMPDIR=/tmp/openclaw-1001 openclaw plugins install --force @openclaw/brave-plugin
-
-chown -R nemoclaw:nemoclaw /home/nemoclaw/.openclaw || true
 
 for _ in $(seq 1 900); do
   if curl -fsS "http://inference:${NEMOCLAW_API_PORT:-8000}/v1/models" >/dev/null 2>&1; then

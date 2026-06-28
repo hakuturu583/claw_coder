@@ -16,7 +16,7 @@ else
   exit 1
 fi
 
-install -d -o nemoclaw -g nemoclaw -m 0700 /home/nemoclaw/.openclaw
+install -d -o nemoclaw -g nemoclaw -m 0700 /home/nemoclaw/.openclaw /home/nemoclaw/.openclaw/workspace
 cat >/home/nemoclaw/.openclaw/openclaw.json <<EOF
 {
   gateway: {
@@ -25,6 +25,12 @@ cat >/home/nemoclaw/.openclaw/openclaw.json <<EOF
   },
   tools: {
     profile: "coding",
+    alsoAllow: ["group:plugins"],
+    sandbox: {
+      tools: {
+        alsoAllow: ["group:plugins"],
+      },
+    },
     web: {
       search: {
         provider: "brave",
@@ -51,8 +57,10 @@ cat >/home/nemoclaw/.openclaw/openclaw.json <<EOF
   },
   agents: {
     defaults: {
-      workspace: "/workspace/repositories",
-      repoRoot: "/workspace/repositories",
+      workspace: "/home/nemoclaw/.openclaw/workspace",
+      compaction: {
+        reserveTokensFloor: 20000,
+      },
       model: {
         primary: "local/nemoclaw-local",
       },
