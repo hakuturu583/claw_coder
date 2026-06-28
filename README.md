@@ -180,7 +180,7 @@ bin/setup_nemoclaw.bash --gpu-id none up
 Override the llama.cpp server image:
 
 ```bash
-NEMOCLAW_LLAMA_IMAGE=ghcr.io/ggml-org/llama.cpp:server-cuda bin/setup_nemoclaw.bash up
+NEMOCLAW_LLAMA_IMAGE=ghcr.io/ggml-org/llama.cpp:server-cuda12 bin/setup_nemoclaw.bash up
 ```
 
 Choose the smaller Ornith model preset:
@@ -189,7 +189,7 @@ Choose the smaller Ornith model preset:
 bin/setup_nemoclaw.bash --ornith-size 9b up
 ```
 
-The default inference backend is the prebuilt `llama.cpp` CUDA server image. Override `NEMOCLAW_LLAMA_IMAGE` if you need a different `llama.cpp` server tag, such as a CPU-only image.
+The default inference backend is the prebuilt `llama.cpp` CUDA 12 server image. Override `NEMOCLAW_LLAMA_IMAGE` if you need a different `llama.cpp` server tag, such as a CPU-only image.
 
 Tune GPU offload:
 

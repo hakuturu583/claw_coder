@@ -55,7 +55,7 @@ services:
       - nemoclaw-hf-cache:/var/lib/nemoclaw/huggingface
 
   inference:
-    image: ${NEMOCLAW_LLAMA_IMAGE:-ghcr.io/ggml-org/llama.cpp:server-cuda}
+    image: ${NEMOCLAW_LLAMA_IMAGE:-ghcr.io/ggml-org/llama.cpp:server-cuda12}
     pull_policy: missing
     restart: unless-stopped
     gpus: all
