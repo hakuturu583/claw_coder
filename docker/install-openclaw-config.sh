@@ -58,7 +58,6 @@ cat >/home/nemoclaw/.openclaw/openclaw.json <<EOF
   agents: {
     defaults: {
       workspace: "/home/nemoclaw/.openclaw/workspace",
-      repoRoot: "/workspace/repositories",
       model: {
         primary: "local/nemoclaw-local",
       },

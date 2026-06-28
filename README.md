@@ -140,7 +140,6 @@ tools.web.search.maxResults = 5
 plugins.entries.brave.enabled = true
 plugins.entries.workboard.enabled = true
 agents.defaults.workspace = /home/nemoclaw/.openclaw/workspace
-agents.defaults.repoRoot = /workspace/repositories
 models.providers.local.baseUrl = http://inference:8000/v1
 models.providers.local.apiKey = nemoclaw-local
 channels.slack.enabled = true
