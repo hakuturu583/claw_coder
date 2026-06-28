@@ -126,6 +126,7 @@ From that shell, you can work directly in `/workspace/repositories` and use `git
 
 For noninteractive GitHub access, set `GH_TOKEN` or `GITHUB_TOKEN` in `.env` before starting the container.
 The control container appends its startup output under `./.claw_coder/logs/` in this repo, bind-mounted into `/home/nemoclaw/.claw_coder/logs/` inside the container, and OpenClaw's own file logs plus session transcripts are stored there too. If startup fails early, check `./.claw_coder/logs/nemoclaw-*.log` first, then `./.claw_coder/logs/openclaw.log` after the gateway reaches `ready`. That keeps gateway output, conversations, and tool/function-call records across container recreation while keeping the files easy to inspect from the host.
+The startup logs now also print the resolved model settings and context sizes used by the control and inference containers, so you can verify model-specific fallbacks directly from the compose output.
 
 ## OpenClaw Gateway
 

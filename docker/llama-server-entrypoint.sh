@@ -34,6 +34,13 @@ if [ -z "${NEMOCLAW_LLAMA_MODEL_PATH:-}" ] || [ ! -s "${NEMOCLAW_LLAMA_MODEL_PAT
   exit 1
 fi
 
+echo "info: resolved inference model settings"
+echo "info:   NEMOCLAW_MODEL=${NEMOCLAW_MODEL:-}"
+echo "info:   NEMOCLAW_LLAMA_MODEL_PATH=${NEMOCLAW_LLAMA_MODEL_PATH}"
+echo "info:   NEMOCLAW_MAX_MODEL_LEN=${NEMOCLAW_MAX_MODEL_LEN:-32768}"
+echo "info:   NEMOCLAW_LLAMA_N_GPU_LAYERS=${NEMOCLAW_LLAMA_N_GPU_LAYERS:-999}"
+echo "info:   NEMOCLAW_LLAMA_CHAT_TEMPLATE=${NEMOCLAW_LLAMA_CHAT_TEMPLATE:-<default>}"
+
 if [ -x /app/llama-server ]; then
   llama_server_bin=/app/llama-server
 elif command -v llama-server >/dev/null 2>&1; then

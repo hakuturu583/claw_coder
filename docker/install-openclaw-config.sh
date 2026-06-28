@@ -21,6 +21,12 @@ if [ -x /usr/local/bin/model-settings.py ] && [ -s "$MODEL_SETTINGS_PATH" ]; the
   eval "$(/usr/local/bin/model-settings.py --config "$MODEL_SETTINGS_PATH" --model "${NEMOCLAW_MODEL:-}" --format shell)"
 fi
 
+echo "info: resolved OpenClaw model settings"
+echo "info:   NEMOCLAW_MODEL=${NEMOCLAW_MODEL:-}"
+echo "info:   NEMOCLAW_MAX_MODEL_LEN=${NEMOCLAW_MAX_MODEL_LEN:-32768}"
+echo "info:   NEMOCLAW_COMPACTION_RESERVE_TOKENS_FLOOR=${NEMOCLAW_COMPACTION_RESERVE_TOKENS_FLOOR:-20000}"
+echo "info:   NEMOCLAW_OPENCLAW_MAX_TOKENS=${NEMOCLAW_OPENCLAW_MAX_TOKENS:-8192}"
+
 install -d -o nemoclaw -g nemoclaw -m 0700 \
   /home/nemoclaw/.openclaw \
   /home/nemoclaw/.openclaw/workspace \
