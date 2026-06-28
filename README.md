@@ -145,12 +145,17 @@ tools.web.search.provider = brave
 tools.web.search.maxResults = 5
 plugins.entries.brave.enabled = true
 plugins.entries.workboard.enabled = true
+skills.workshop.autonomous.enabled = false
+skills.workshop.approvalPolicy = pending
+skills.workshop.maxPending = 50
+skills.workshop.maxSkillBytes = 40000
 agents.defaults.workspace = /home/nemoclaw/.openclaw/workspace
 agents.defaults.compaction.reserveTokensFloor = 20000
 models.providers.local.baseUrl = http://inference:8000/v1
 models.providers.local.apiKey = nemoclaw-local
 channels.slack.enabled = true
 channels.slack.mode = socket
+channels.slack.mediaMaxMb = 20
 channels.slack.botToken = env:SLACK_BOT_TOKEN
 channels.slack.appToken = env:SLACK_APP_TOKEN
 channels.slack.channels.<id>.allow = true
@@ -161,7 +166,9 @@ session.store = /home/nemoclaw/.claw_coder/logs/sessions/sessions.json
 
 The gateway reads its Slack credentials and Brave Search key from the container environment. The control container waits for inference to answer `/v1/models`, writes the config, and then starts `openclaw gateway` as the `nemoclaw` user.
 The Brave plugin backs web search, and the Workboard plugin is enabled so OpenClaw Kanban-style task tracking is available inside OpenClaw. Plugin-owned tools are added through the main tool profile without removing the built-in coding tools.
+Skill Workshop is enabled as the governed path for workspace skills, with pending approval for agent-initiated apply/reject/quarantine and no autonomous proposal drafting.
 Slack replies are configured with `replyToMode: "first"`, so the first response to a mention should land in a thread under the triggering message.
+Slack file upload is available through the built-in `upload-file` action, and `channels.slack.mediaMaxMb` caps per-file inbound media handling at 20 MB.
 Automatic compaction keeps the configured reserve floor so long sessions have enough headroom to continue after summary recovery.
 
 ## Tuning
