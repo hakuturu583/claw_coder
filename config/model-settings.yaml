@@ -10,6 +10,6 @@ models:
     compaction_reserve_tokens_floor: 20000
     openclaw_max_tokens: 8192
   deepreinforce-ai/Ornith-1.0-9B-GGUF:Q4_K_M:
-    context_window: 262144
+    context_window: 32768
     compaction_reserve_tokens_floor: 12000
     openclaw_max_tokens: 8192
