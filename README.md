@@ -134,6 +134,8 @@ For noninteractive GitHub access, set `GH_TOKEN` or `GITHUB_TOKEN` in `.env` bef
 gateway.bind = loopback
 tools.profile = coding
 tools.alsoAllow = ["group:plugins"]
+tools.toolSearch.enabled = true
+tools.toolSearch.mode = tools
 tools.sandbox.tools.alsoAllow = ["group:plugins"]
 tools.web.search.provider = brave
 tools.web.search.maxResults = 5
