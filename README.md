@@ -86,11 +86,12 @@ cp .env.example .env
 ```
 
 Put `GH_TOKEN` or `GITHUB_TOKEN` in that `.env` file if you want `gh` to work inside the `nemoclaw` container without an interactive login. Set `NEMOCLAW_CHARACTER_NAME=Clawくん` there if you want to override the default character name used by the gateway.
+Set `NEMOCLAW_MODEL=deepreinforce-ai/Ornith-1.0-9B-GGUF:Q4_K_M` in `.env` if you want the smaller model for local testing; the compose stack and the setup script both read that value directly.
 If a model needs a non-default chat template for tool use, set `NEMOCLAW_LLAMA_CHAT_TEMPLATE` in `.env` and the inference container will pass it through to `llama.cpp`.
 
 The OpenClaw Slack Channel expects `SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN`, and `SLACK_CHANNEL_ID` in `.env` or the host environment.
 Brave web search expects `BRAVE_API_KEY` or `BRAVE_SEARCH_API_KEY`.
-Set `NEMOCLAW_ORNITH_SIZE=9b` if you want the smaller preset by default.
+Set `NEMOCLAW_ORNITH_SIZE=9b` if you want the smaller preset by default when using `bin/setup_nemoclaw.bash` without an explicit `NEMOCLAW_MODEL`.
 
 ```bash
 bin/setup_nemoclaw.bash configure-openclaw
