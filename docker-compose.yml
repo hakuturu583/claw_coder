@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile
       args:
         BASE_IMAGE: ${NEMOCLAW_IMAGE:-ubuntu:24.04}
-        NEMOCLAW_UID: ${NEMOCLAW_UID:-1001}
+        NEMOCLAW_UID: ${NEMOCLAW_UID:-1000}
     image: nemoclaw:local
     pull_policy: build
     restart: unless-stopped
@@ -15,7 +15,7 @@ services:
       HOME: /home/nemoclaw
       USER: nemoclaw
       LOGNAME: nemoclaw
-      NEMOCLAW_UID: ${NEMOCLAW_UID:-1001}
+      NEMOCLAW_UID: ${NEMOCLAW_UID:-1000}
       NEMOCLAW_CHARACTER_NAME: ${NEMOCLAW_CHARACTER_NAME:-Clawくん}
       NEMOCLAW_API_PORT: ${NEMOCLAW_API_PORT:-8000}
       BRAVE_API_KEY: ${BRAVE_API_KEY:-}
@@ -39,7 +39,7 @@ services:
       dockerfile: Dockerfile
       args:
         BASE_IMAGE: ${NEMOCLAW_IMAGE:-ubuntu:24.04}
-        NEMOCLAW_UID: ${NEMOCLAW_UID:-1001}
+        NEMOCLAW_UID: ${NEMOCLAW_UID:-1000}
     image: nemoclaw:local
     pull_policy: build
     restart: "no"

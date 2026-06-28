@@ -5,7 +5,7 @@ if [ -r /opt/nemoclaw/env ]; then
   . /opt/nemoclaw/env
 fi
 
-NEMOCLAW_UID="${NEMOCLAW_UID:-$(id -u nemoclaw 2>/dev/null || printf '1001')}"
+NEMOCLAW_UID="${NEMOCLAW_UID:-$(id -u nemoclaw 2>/dev/null || printf '1000')}"
 OPENCLAW_TMPDIR="/tmp/openclaw-${NEMOCLAW_UID}"
 
 if [ -z "${SLACK_BOT_TOKEN:-}" ] || [ -z "${SLACK_APP_TOKEN:-}" ] || [ -z "${SLACK_CHANNEL_ID:-}" ]; then

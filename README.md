@@ -87,7 +87,7 @@ You can keep credentials outside git in a local `.env` file:
 cp .env.example .env
 ```
 
-Set `NEMOCLAW_UID=1001` if you want to keep the container user and the OpenClaw temp/cache paths aligned with a different numeric UID. The default is 1001.
+Set `NEMOCLAW_UID=1000` if you want to keep the container user and the OpenClaw temp/cache paths aligned with a different numeric UID. The default is 1000.
 Put `GH_TOKEN` or `GITHUB_TOKEN` in that `.env` file if you want `gh` to work inside the `nemoclaw` container without an interactive login. Set `NEMOCLAW_CHARACTER_NAME=Clawくん` there if you want to override the default character name used by the gateway.
 Set `NEMOCLAW_MODEL=deepreinforce-ai/Ornith-1.0-9B-GGUF:Q4_K_M` in `.env` if you want the smaller model for local testing; the compose stack and the setup script both read that value directly.
 If a model needs a non-default chat template for tool use, set `NEMOCLAW_LLAMA_CHAT_TEMPLATE` in `.env` and the inference container will pass it through to `llama.cpp`.

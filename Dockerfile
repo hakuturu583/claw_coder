@@ -2,7 +2,7 @@ ARG BASE_IMAGE=ubuntu:24.04
 FROM ${BASE_IMAGE}
 
 ENV DEBIAN_FRONTEND=noninteractive
-ARG NEMOCLAW_UID=1001
+ARG NEMOCLAW_UID=1000
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
