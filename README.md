@@ -47,7 +47,7 @@ endpoint:  http://127.0.0.1:8000/v1
 - Docker Engine with the Compose v2 plugin
 - Enough RAM/VRAM for the selected GGUF quant
 - NVIDIA Container Toolkit if GPU inference is required
-- NVIDIA driver exposing CUDA 13.0 or newer for the default `llama.cpp` CUDA server image
+- NVIDIA driver exposing CUDA 12.8 or newer for the default `llama.cpp` CUDA server image
 - Network access from the container for apt, pip, Hugging Face, and model downloads
 
 Check the host:
@@ -70,7 +70,7 @@ If you want a smaller model for low-VRAM testing, run:
 bin/setup_nemoclaw.bash --ornith-size 9b up
 ```
 
-You can also run `docker compose up` directly. On the first start, a lightweight model-init service will download the GGUF file into the persistent model volume, the inference container will start the prebuilt `llama.cpp` server image, and the control container will wait for inference, write `~/.openclaw/openclaw.json`, and start `openclaw gateway`.
+You can also run `docker compose up` directly. On the first start, a lightweight model-init service will download the GGUF file into the persistent model volume, the inference container will start the prebuilt `llama.cpp` CUDA 12 server image, and the control container will wait for inference, write `~/.openclaw/openclaw.json`, and start `openclaw gateway`.
 
 For a gated/private download:
 
@@ -180,7 +180,7 @@ bin/setup_nemoclaw.bash --gpu-id none up
 Override the llama.cpp server image:
 
 ```bash
-NEMOCLAW_LLAMA_IMAGE=ghcr.io/ggml-org/llama.cpp:server-cuda13 bin/setup_nemoclaw.bash up
+NEMOCLAW_LLAMA_IMAGE=ghcr.io/ggml-org/llama.cpp:server-cuda bin/setup_nemoclaw.bash up
 ```
 
 Choose the smaller Ornith model preset:
