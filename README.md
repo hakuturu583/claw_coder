@@ -88,7 +88,7 @@ cp .env.example .env
 ```
 
 Put `GH_TOKEN` or `GITHUB_TOKEN` in that `.env` file if you want `gh` to work inside the `nemoclaw` container without an interactive login. Set `NEMOCLAW_CHARACTER_NAME=Clawくん` there if you want to override the default character name used by the gateway.
-Set `NEMOCLAW_MODEL=deepreinforce-ai/Ornith-1.0-9B-GGUF:Q4_K_M` in `.env` if you want the smaller model for local testing; the compose stack and the setup script both read that value directly, and `config/model-settings.yaml` uses the model id to pick context and compaction defaults.
+Set `NEMOCLAW_MODEL=deepreinforce-ai/Ornith-1.0-9B-GGUF:Q4_K_M` in `.env` if you want the smaller model for local testing; the compose stack and the setup script both read that value directly, and `config/model-settings.yaml` uses the model id to pick context and compaction defaults. The control container now also receives `NEMOCLAW_MODEL`, so it can resolve the same model-specific settings when `docker compose up` is used directly.
 If a model needs a non-default chat template for tool use, set `NEMOCLAW_LLAMA_CHAT_TEMPLATE` in `.env` and the inference container will pass it through to `llama.cpp`.
 
 The OpenClaw Slack Channel expects `SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN`, and `SLACK_CHANNEL_ID` in `.env` or the host environment.
@@ -125,7 +125,7 @@ bin/setup_nemoclaw.bash destroy
 From that shell, you can work directly in `/workspace/repositories` and use `git` or `gh` against the mounted checkouts. OpenClaw's own workspace/bootstrap files live under `/home/nemoclaw/.openclaw/workspace`, and the default `AGENTS.md` is mounted there from `openclaw/AGENTS.md`. A compatibility mount also places the same file at `/workspace/repositories/AGENTS.md`, so repository checkouts stay separate from agent state while the current resolver still finds the default instructions.
 
 For noninteractive GitHub access, set `GH_TOKEN` or `GITHUB_TOKEN` in `.env` before starting the container.
-The control container appends its startup output under `./.claw_coder/logs/` in this repo, bind-mounted into `/home/nemoclaw/.claw_coder/logs/` inside the container, and OpenClaw's own file logs plus session transcripts are stored there too. That keeps gateway output, conversations, and tool/function-call records across container recreation while keeping the files easy to inspect from the host.
+The control container appends its startup output under `./.claw_coder/logs/` in this repo, bind-mounted into `/home/nemoclaw/.claw_coder/logs/` inside the container, and OpenClaw's own file logs plus session transcripts are stored there too. If startup fails early, check `./.claw_coder/logs/nemoclaw-*.log` first, then `./.claw_coder/logs/openclaw.log` after the gateway reaches `ready`. That keeps gateway output, conversations, and tool/function-call records across container recreation while keeping the files easy to inspect from the host.
 
 ## OpenClaw Gateway
 
