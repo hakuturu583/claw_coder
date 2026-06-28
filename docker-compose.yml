@@ -6,11 +6,12 @@ services:
     image: nemoclaw:skill-hub
     pull_policy: build
     restart: unless-stopped
-    network_mode: none
     working_dir: /skill-hub
     command: ["/bin/sh", "-lc", "trap : TERM INT; sleep infinity & wait"]
     volumes:
       - skill-hub-data:/skill-hub
+    networks:
+      - skill-hub-internal
 
   nemoclaw:
     build:
@@ -146,3 +147,7 @@ volumes:
   nemoclaw-data:
   nemoclaw-models:
   nemoclaw-hf-cache:
+
+networks:
+  skill-hub-internal:
+    internal: true

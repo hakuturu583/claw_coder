@@ -132,7 +132,7 @@ bin/setup_nemoclaw.bash destroy
 
 `shell` opens a shell in the persistent `nemoclaw` control container. That is where OpenClaw skill data and other per-user state should live. OpenClaw skills are stored under `/home/nemoclaw/.openclaw/skills`, and the OpenClaw workspace plus default AGENTS instructions live under `/home/nemoclaw/.openclaw/workspace`.
 
-The shared Skill Hub is managed by its own Compose service with no network access. It keeps its files in the persistent `skill-hub-data` volume, is mounted at `/skill-hub` inside that service, and is exposed read-only to the control container at `/opt/nemoclaw/skill-hub`.
+The shared Skill Hub is managed by its own Compose service on an internal-only Docker network, so it cannot reach the outside world. It keeps its files in the persistent `skill-hub-data` volume, is mounted at `/skill-hub` inside that service, and is exposed read-only to the control container at `/opt/nemoclaw/skill-hub`.
 
 From that shell, you can work directly in `/workspace/repositories` and use `git` or `gh` against the mounted checkouts. OpenClaw's own workspace/bootstrap files live under `/home/nemoclaw/.openclaw/workspace`, and the default `AGENTS.md` is mounted there from `openclaw/AGENTS.md`. A compatibility mount also places the same file at `/workspace/repositories/AGENTS.md`, so repository checkouts stay separate from agent state while the current resolver still finds the default instructions.
 
