@@ -180,6 +180,7 @@ session.store = /home/nemoclaw/.claw_coder/logs/sessions/sessions.json
 The gateway reads its Slack credentials and Brave Search key from the container environment. The control container waits for inference to answer `/v1/models`, writes the config, and then starts `openclaw gateway` as the `nemoclaw` user.
 The Brave plugin backs web search, and the Workboard plugin is enabled so OpenClaw Kanban-style task tracking is available inside OpenClaw. Plugin-owned tools are added through the main tool profile without removing the built-in coding tools.
 Skill Workshop is enabled as the governed path for workspace skills, with pending approval for agent-initiated apply/reject/quarantine and no autonomous proposal drafting.
+Custom OpenClaw skills can live in `openclaw/skills/` in this repo; the control container mounts that directory read-only and loads it through `skills.load.extraDirs`.
 Slack replies are configured with `replyToMode: "first"`, so the first response to a mention should land in a thread under the triggering message.
 Slack file upload is available through the built-in `upload-file` action, and `channels.slack.mediaMaxMb` caps per-file inbound media handling at 20 MB.
 The default agent skill list now includes `slack-file-upload` and `sandbox-docker`, and `bin/setup_nemoclaw.bash sandbox-image` builds the Docker sandbox image used by session sandboxes.
