@@ -17,13 +17,22 @@ if [ -d /home/nemoclaw ]; then
   install -d -o nemoclaw -g nemoclaw -m 0755 \
     /home/nemoclaw \
     /home/nemoclaw/.openclaw \
+    /home/nemoclaw/.openclaw/logs \
+    /home/nemoclaw/.openclaw/npm \
+    /home/nemoclaw/.openclaw/state \
     /home/nemoclaw/.openclaw/skills \
     /home/nemoclaw/.openclaw/workspace || true
   chown nemoclaw:nemoclaw \
     /home/nemoclaw \
     /home/nemoclaw/.openclaw \
+    /home/nemoclaw/.openclaw/logs \
+    /home/nemoclaw/.openclaw/npm \
+    /home/nemoclaw/.openclaw/state \
     /home/nemoclaw/.openclaw/skills \
     /home/nemoclaw/.openclaw/workspace || true
+  find /home/nemoclaw/.openclaw \
+    -path /home/nemoclaw/.openclaw/workspace -prune -o \
+    -exec chown nemoclaw:nemoclaw {} + || true
 fi
 
 if [ ! -x /opt/openclaw/bin/openclaw ]; then
@@ -31,7 +40,7 @@ if [ ! -x /opt/openclaw/bin/openclaw ]; then
   exit 1
 fi
 
-gosu nemoclaw:nemoclaw /usr/local/bin/install-openclaw-config.sh
+/usr/local/bin/install-openclaw-config.sh
 
 install -d -o nemoclaw -g nemoclaw -m 0700 "${OPENCLAW_TMPDIR}" || true
 install -d -o nemoclaw -g nemoclaw -m 0700 "${OPENCLAW_TMPDIR}/npm" || true

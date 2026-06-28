@@ -24,8 +24,8 @@ RUN apt-get update \
 RUN curl -fsSL --proto '=https' --tlsv1.2 https://openclaw.ai/install-cli.sh \
   | bash -s -- --prefix /opt/openclaw --no-onboard
 
-RUN groupadd --gid "${NEMOCLAW_UID}" nemoclaw \
-  && useradd --create-home --home-dir /home/nemoclaw --shell /bin/bash --uid "${NEMOCLAW_UID}" --gid "${NEMOCLAW_UID}" nemoclaw \
+RUN groupadd --non-unique --gid "${NEMOCLAW_UID}" nemoclaw \
+  && useradd --create-home --home-dir /home/nemoclaw --shell /bin/bash --non-unique --uid "${NEMOCLAW_UID}" --gid "${NEMOCLAW_UID}" nemoclaw \
   && install -d -m 0755 /opt/nemoclaw /var/lib/nemoclaw /home/nemoclaw
 
 COPY docker/inference-entrypoint.sh /usr/local/bin/inference-entrypoint.sh
