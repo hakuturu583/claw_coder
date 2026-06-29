@@ -17,10 +17,34 @@ load_env_file() {
   set +a
 }
 
+detect_host_uid() {
+  id -u
+}
+
+detect_host_gid() {
+  id -g
+}
+
+detect_docker_sock_gid() {
+  local gid=""
+  if [[ -S /var/run/docker.sock ]]; then
+    gid="$(stat -c '%g' /var/run/docker.sock 2>/dev/null || true)"
+  fi
+  if [[ -z "$gid" ]] && have getent; then
+    gid="$(getent group docker 2>/dev/null | awk -F: 'NR==1 {print $3}')"
+  fi
+  [[ -n "$gid" ]] || gid="138"
+  printf '%s\n' "$gid"
+}
+
 ENV_FILE="${NEMOCLAW_ENV_FILE:-.env}"
 if [[ -n "$ENV_FILE" && "$ENV_FILE" != "none" ]]; then
   load_env_file "$ENV_FILE"
 fi
+
+: "${NEMOCLAW_UID:=$(detect_host_uid)}"
+: "${NEMOCLAW_GID:=$(detect_host_gid)}"
+: "${NEMOCLAW_DOCKER_GID:=$(detect_docker_sock_gid)}"
 
 INSTANCE="${NEMOCLAW_INSTANCE:-nemoclaw-vllm}"
 IMAGE="${NEMOCLAW_IMAGE:-ubuntu:24.04}"
@@ -486,6 +510,9 @@ export NEMOCLAW_MAX_MODEL_LEN="$MAX_MODEL_LEN"
 export NEMOCLAW_COMPACTION_RESERVE_TOKENS_FLOOR="$COMPACTION_RESERVE_TOKENS_FLOOR"
 export NEMOCLAW_OPENCLAW_MAX_TOKENS="$OPENCLAW_MAX_TOKENS"
 export NEMOCLAW_LLAMA_N_GPU_LAYERS="$LLAMA_N_GPU_LAYERS"
+export NEMOCLAW_UID
+export NEMOCLAW_GID
+export NEMOCLAW_DOCKER_GID
 resolve_model_settings
 
 : "${NEMOCLAW_MAX_MODEL_LEN:=32768}"
