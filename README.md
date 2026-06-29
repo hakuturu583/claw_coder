@@ -87,7 +87,7 @@ You can keep credentials outside git in a local `.env` file:
 cp .env.example .env
 ```
 
-`NEMOCLAW_UID`, `NEMOCLAW_GID`, and `NEMOCLAW_DOCKER_GID` are optional. Leave them blank in `.env` and `bin/setup_nemoclaw.bash` will auto-detect the host user ids and the Docker socket group id.
+`NEMOCLAW_UID`, `NEMOCLAW_GID`, and `NEMOCLAW_DOCKER_GID` are optional. Leave them blank in `.env` and `bin/setup_nemoclaw.bash` will auto-detect the host user ids and the Docker socket group id. The `nemoclaw` entrypoint also re-checks the mounted Docker socket at startup and adds the runtime user to the matching group if needed.
 Put `GH_TOKEN` or `GITHUB_TOKEN` in that `.env` file if you want `gh` to work inside the `nemoclaw` container without an interactive login. Set `NEMOCLAW_CHARACTER_NAME=Clawくん` there if you want to override the default character name used by the gateway.
 Set `NEMOCLAW_MODEL=deepreinforce-ai/Ornith-1.0-9B-GGUF:Q4_K_M` in `.env` if you want the smaller model for local testing; the compose stack and the setup script both read that value directly, and `config/model-settings.yaml` uses the model id to pick context and compaction defaults. The control container now also receives `NEMOCLAW_MODEL`, so it can resolve the same model-specific settings when `docker compose up` is used directly.
 The 9B preset keeps the context window at 32768 so it fits on a 24 GB GPU without the llama.cpp loader trying to allocate an oversized KV cache.

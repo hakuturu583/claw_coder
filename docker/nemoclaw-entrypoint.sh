@@ -18,6 +18,36 @@ fi
 NEMOCLAW_UID="${NEMOCLAW_UID:-$(id -u nemoclaw 2>/dev/null || printf '1000')}"
 OPENCLAW_TMPDIR="/tmp/openclaw-${NEMOCLAW_UID}"
 
+ensure_docker_socket_access() {
+  local sock_gid group_name=""
+
+  if [ ! -S /var/run/docker.sock ]; then
+    return 0
+  fi
+
+  sock_gid="$(stat -c '%g' /var/run/docker.sock 2>/dev/null || true)"
+  if [ -z "$sock_gid" ]; then
+    sock_gid="${NEMOCLAW_DOCKER_GID:-}"
+  fi
+  if [ -z "$sock_gid" ]; then
+    return 0
+  fi
+
+  group_name="$(getent group | awk -F: -v gid="$sock_gid" '$3 == gid {print $1; exit}')"
+  if [ -z "$group_name" ]; then
+    group_name="docker-sock-${sock_gid}"
+    if ! getent group "$group_name" >/dev/null 2>&1; then
+      groupadd --non-unique --gid "$sock_gid" "$group_name" 2>/dev/null || true
+    fi
+  fi
+
+  if ! id -nG nemoclaw 2>/dev/null | tr ' ' '\n' | grep -qx "$group_name"; then
+    usermod -aG "$group_name" nemoclaw 2>/dev/null || true
+  fi
+}
+
+ensure_docker_socket_access
+
 if [ -z "${SLACK_BOT_TOKEN:-}" ] || [ -z "${SLACK_APP_TOKEN:-}" ] || [ -z "${SLACK_CHANNEL_ID:-}" ]; then
   echo "error: SLACK_BOT_TOKEN, SLACK_APP_TOKEN, and SLACK_CHANNEL_ID are required for the OpenClaw Slack Channel" >&2
   exit 1
