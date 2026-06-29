@@ -16,6 +16,7 @@ RUN apt-get update \
     curl \
     gh \
     git \
+    docker.io \
     gosu \
     jq \
     python3 \
@@ -42,6 +43,7 @@ RUN chmod 0755 /usr/local/bin/inference-entrypoint.sh /usr/local/bin/install-nem
 
 ENV NEMOCLAW_UID=${NEMOCLAW_UID}
 ENV NEMOCLAW_GID=${NEMOCLAW_GID}
+ENV NEMOCLAW_DOCKER_GID=${NEMOCLAW_DOCKER_GID:-138}
 ENV PATH=/opt/openclaw/bin:${PATH}
 
 WORKDIR /opt/nemoclaw
